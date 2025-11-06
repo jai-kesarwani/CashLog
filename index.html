@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Income and Expense Tracker</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        // Authentication check - redirect to login if not authenticated
+        if (localStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        }
+    </script>
+</head>
+<body>
+    <!-- Main Application -->
+    <div id="main-app" class="container">
+        <header class="app-header">
+            <div class="header-content">
+                <h1><i class="fas fa-wallet"></i> CashLog</h1>
+                <p>Logbook for your incomes and expenses</p>
+            </div>
+            <div class="theme-toggle">
+                <i class="fas fa-moon" id="theme-icon"></i>
+            </div>
+        </header>
+
+        <div class="app-container">
+            <aside class="sidebar">
+                <div class="user-profile">
+                    <div class="avatar" id="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <h3 id="welcome-message">Welcome!</h3>
+                </div>
+
+                <nav class="main-nav">
+                    <ul>
+                        <li class="active" data-section="dashboard"><i class="fas fa-home"></i> Dashboard</li>
+                        <li data-section="transactions"><i class="fas fa-exchange-alt"></i> Transactions</li>
+                        <li data-section="budgets"><i class="fas fa-chart-pie"></i> Budgets</li>
+                        <li data-section="reports"><i class="fas fa-chart-line"></i> Reports</li>
+                        <li data-section="goals"><i class="fas fa-bullseye"></i> Savings Goals</li>
+                        <li data-section="split-bills"><i class="fas fa-receipt"></i> Split Bills</li>
+                        <li data-section="account"><i class="fas fa-user-circle"></i> Account</li>
+                    </ul>
+                </nav>
+
+                <div class="sidebar-footer">
+                    <button id="logout-btn-sidebar" class="btn-danger btn-full">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+            </aside>
+
+            <main class="main-content">
+                <section id="dashboard" class="content-section active">
+                    <div class="summary-cards">
+                        <div class="card">
+                            <h3>Total Balance</h3>
+                            <p class="amount" id="total-balance">₹0.00</p>
+                            <p class="change positive"><i class="fas fa-arrow-up"></i> 0% from last month</p>
+                        </div>
+                        <div class="card">
+                            <h3>Monthly Income</h3>
+                            <p class="amount income" id="monthly-income">₹0.00</p>
+                            <p class="change"><i class="fas fa-calendar-alt"></i> This month</p>
+                        </div>
+                        <div class="card">
+                            <h3>Monthly Expenses</h3>
+                            <p class="amount expense" id="monthly-expenses">₹0.00</p>
+                            <p class="change"><i class="fas fa-calendar-alt"></i> This month</p>
+                        </div>
+                        <div class="card">
+                            <h3>Savings Rate</h3>
+                            <p class="amount" id="savings-rate">0%</p>
+                            <p class="change"><i class="fas fa-percentage"></i> Of income</p>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <div class="chart-card">
+                            <h3>Spending by Category</h3>
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <h3>Monthly Overview</h3>
+                            <canvas id="monthlyChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="recent-transactions">
+                        <h3>Recent Transactions</h3>
+                        <div class="transactions-list" id="recent-transactions">
+                            </div>
+                    </div>
+                </section>
+
+                <section id="transactions" class="content-section">
+                    <div class="section-header">
+                        <h2>Transactions</h2>
+                        <button id="add-transaction" class="btn-primary">
+                            <i class="fas fa-plus"></i> Add Entry
+                        </button>
+                    </div>
+
+                    <div class="filters">
+                        <div class="filter-group">
+                            <label for="transaction-type">Type</label>
+                            <select id="transaction-type">
+                                <option value="all">All</option>
+                                <option value="income">Income</option>
+                                <option value="expense">Expense</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="transaction-category">Category</label>
+                            <select id="transaction-category">
+                                <option value="all">All Categories</option>
+                                </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="transaction-month">Month</label>
+                            <select id="transaction-month">
+                                <option value="all">All Months</option>
+                                </select>
+                        </div>
+                    </div>
+
+                    <div class="transactions-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Description</th>
+                                    <th>Category</th>
+                                    <th>Type</th>
+                                    <th>Amount</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactions-list">
+                                </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="budgets" class="content-section">
+                    <div class="section-header">
+                        <h2>Budget Categories</h2>
+                        <button id="add-category" class="btn-primary">
+                            <i class="fas fa-plus"></i> Add Category
+                        </button>
+                    </div>
+                    <div class="budget-categories">
+                        <div class="budget-grid" id="budget-categories">
+                        </div>
+                    </div>
+                </section>
+
+                <section id="reports" class="content-section">
+                    <div class="section-header">
+                        <h2>Reports</h2>
+                        <div class="report-period">
+                            <button id="prev-month"><i class="fas fa-chevron-left"></i></button>
+                            <span id="current-month">June 2023</span>
+                            <button id="next-month"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <div class="report-charts">
+                        <div class="chart-card large">
+                            <h3>Income vs Expenses</h3>
+                            <canvas id="incomeExpenseChart"></canvas>
+                        </div>
+                        <div class="chart-card large">
+                            <h3>Spending Trends</h3>
+                            <canvas id="trendsChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="report-details">
+                        <div class="detail-card">
+                            <h3>Top Expenses</h3>
+                            <ul id="top-expenses">
+                            </ul>
+                        </div>
+                        <div class="detail-card">
+                            <h3>Category Breakdown</h3>
+                            <ul id="category-breakdown">
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="goals" class="content-section">
+                    <div class="section-header">
+                        <h2>Savings Goals</h2>
+                        <button id="add-goal" class="btn-primary">
+                            <i class="fas fa-plus"></i> Add Goal
+                        </button>
+                    </div>
+                    <div class="goals-list" id="savings-goals">
+                        </div>
+                </section>
+
+                <section id="split-bills" class="content-section">
+                    <div class="section-header">
+                        <h2>Split Bills</h2>
+                        <button id="add-bill" class="btn-primary">
+                            <i class="fas fa-plus"></i> Add Bill
+                        </button>
+                    </div>
+                    <div class="bills-list" id="split-bills-list">
+                    </div>
+                </section>
+
+                <section id="account" class="content-section">
+                    <div class="section-header">
+                        <h2>My Account</h2>
+                    </div>
+                    <div class="account-container">
+                        <div class="account-card">
+                            <div class="account-avatar-large">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="account-info">
+                                <h3 id="account-name">Name</h3>
+                                <p id="account-email">Email</p>
+                            </div>
+                            <button id="edit-profile" class="btn-primary">
+                                <i class="fas fa-edit"></i> Edit Profile
+                            </button>
+                        </div>
+                        <div class="account-actions">
+                            <button id="logout-btn" class="btn-danger btn-full">
+                                <i class="fas fa-sign-out-alt"></i> Logout
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <div class="modal" id="transaction-modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Add New Transaction</h2>
+            <form id="transaction-form">
+                <div class="form-group">
+                    <label for="trans-type">Type</label>
+                    <select id="trans-type">
+                        <option value="expense">Expense</option>
+                        <option value="income">Income</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="trans-amount">Amount (₹)</label>
+                    <input type="number" id="trans-amount" min="0.01" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="trans-description">Description</label>
+                    <input type="text" id="trans-description" required>
+                </div>
+                <div class="form-group">
+                    <label for="trans-category">Category</label>
+                    <select id="trans-category" required>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="trans-date">Date</label>
+                    <input type="date" id="trans-date" required>
+                </div>
+                <button type="submit" class="btn-primary">Save Transaction</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="category-modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Add New Category</h2>
+            <form id="category-form">
+                <div class="form-group">
+                    <label for="category-name">Category Name</label>
+                    <input type="text" id="category-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="category-budget">Budget (₹)</label>
+                    <input type="number" id="category-budget" min="0" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="category-icon">Icon Class</label>
+                    <select id="category-icon">
+                        <option value="fa-utensils">Food</option>
+                        <option value="fa-car">Transportation</option>
+                        <option value="fa-home">Housing</option>
+                        <option value="fa-film">Entertainment</option>
+                        <option value="fa-shopping-cart">Shopping</option>
+                        <option value="fa-money-bill-wave">Income</option>
+                        <option value="fa-credit-card">Bills</option>
+                        <option value="fa-piggy-bank">Savings</option>
+                        <option value="fa-stethoscope">Health</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary" id="save-category">Save Category</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="goal-modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Add Savings Goal</h2>
+            <form id="goal-form">
+                <div class="form-group">
+                    <label for="goal-name">Goal Name</label>
+                    <input type="text" id="goal-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="goal-target">Target Amount (₹)</label>
+                    <input type="number" id="goal-target" min="0.01" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="goal-saved">Amount Saved (₹)</label>
+                    <input type="number" id="goal-saved" min="0" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="goal-date">Target Date</label>
+                    <input type="date" id="goal-date" required>
+                </div>
+                <button type="submit" class="btn-primary">Save Goal</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="goal-update-modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Update Savings Goal</h2>
+            <form id="goal-update-form">
+                <div class="form-group">
+                    <label for="goal-update-amount">Add Amount (₹)</label>
+                    <input type="number" id="goal-update-amount" min="0.01" step="0.01" required>
+                    <small style="color: var(--gray-color); font-size: 12px;">This amount will be added to your existing savings.</small>
+                </div>
+                <button type="submit" class="btn-primary">Add Amount</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="bill-modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Add Split Bill</h2>
+            <form id="bill-form">
+                <div class="form-group">
+                    <label for="bill-name">Bill Name</label>
+                    <input type="text" id="bill-name" placeholder="e.g., Restaurant Dinner" required>
+                </div>
+                <div class="form-group">
+                    <label for="bill-amount">Total Bill Amount (₹)</label>
+                    <input type="number" id="bill-amount" min="0.01" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="bill-participants">Friends' Names (comma-separated)</label>
+                    <input type="text" id="bill-participants" placeholder="e.g., Alice, Bob, Charlie" required>
+                    <small style="color: var(--gray-color); font-size: 12px;">Your name will be automatically included.</small>
+                </div>
+                <div class="form-group">
+                    <label>Split Type</label>
+                    <div class="split-buttons">
+                        <button type="button" class="btn-split btn-split-equal active" id="btn-split-equal">
+                            <i class="fas fa-equals"></i> Split Equally
+                        </button>
+                        <button type="button" class="btn-split btn-split-unequal" id="btn-split-unequal">
+                            <i class="fas fa-sliders-h"></i> Split Unequally
+                        </button>
+                    </div>
+                    <input type="hidden" id="bill-split-type" value="equal">
+                </div>
+                <div id="equal-split-preview" class="split-preview">
+                    <h4>Split Preview (Equal)</h4>
+                    <div id="equal-split-details"></div>
+                </div>
+                <div id="unequal-split-container" class="unequal-split-container" style="display: none;">
+                    <h4>Enter Amounts for Each Person</h4>
+                    <div id="participant-amounts"></div>
+                    <div id="split-validation-message" class="validation-message" style="display: none;">
+                        ⚠️ Amounts must sum up to the total bill.
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">Save Bill</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <div class="toast-content">
+            <i class="toast-icon"></i>
+            <span class="toast-message"></span>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
