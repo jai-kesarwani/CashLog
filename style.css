@@ -673,6 +673,14 @@ body {
     display: flex;
 }
 
+.modal.active ~ * {
+    filter: blur(0);
+}
+
+body.modal-open {
+    overflow: hidden;
+}
+
 .modal-content {
     background-color: var(--light-color);
     border-radius: var(--border-radius);
@@ -681,6 +689,16 @@ body {
     max-width: 500px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
     position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-content.bill-modal-content,
+.modal-content.edit-profile-modal-content {
+    padding: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .close-modal {
@@ -691,6 +709,7 @@ body {
     cursor: pointer;
     color: var(--gray-color);
     transition: var(--transition);
+    z-index: 10;
 }
 
 .close-modal:hover {
@@ -951,6 +970,24 @@ body {
     flex: 1;
 }
 
+/* Split Bills - Add Bill Scroll Fix */
+.scrollable-participants {
+    max-height: 220px;       /* Prevent infinite expansion */
+    overflow-y: auto;        /* Enable vertical scroll */
+    padding-right: 6px;
+}
+
+/* Optional: smoother scrollbar */
+.scrollable-participants::-webkit-scrollbar {
+    width: 6px;
+}
+
+.scrollable-participants::-webkit-scrollbar-thumb {
+    background-color: var(--gray-color);
+    border-radius: 4px;
+}
+
+
 /* Account Section Styles */
 .account-container {
     max-width: 600px;
@@ -993,6 +1030,64 @@ body {
 
 .account-actions {
     margin-top: 20px;
+}
+
+/* Export Modal Styles */
+.export-options {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.export-section {
+    margin-bottom: 20px;
+}
+
+.export-section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+}
+
+.export-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.export-buttons button {
+    flex: 1;
+    min-width: 150px;
+}
+
+.export-preview {
+    background-color: var(--light-gray);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.export-preview h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+}
+
+.export-summary-item {
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    font-size: 14px;
+}
+
+.export-summary-item:last-child {
+    border-bottom: none;
+}
+
+.export-summary-item strong {
+    color: var(--dark-color);
+    margin-right: 10px;
 }
 
 /* Goal History Styles */
@@ -1155,6 +1250,7 @@ body {
     font-size: 14px;
     margin-bottom: 15px;
     color: var(--primary-color);
+    /* border-radius: var(--border-radius) ; */
 }
 
 .validation-message {
@@ -1167,6 +1263,47 @@ body {
     text-align: center;
     border: 1px solid #ffc107;
 }
+
+/* ================================
+   Split Bills – Participant Amount Input
+================================ */
+
+.participant-amount-input {
+    width: 100%;
+    padding: 7px 10px;          /* inner spacing */
+    margin-top: 4px;             /* space from name */
+    margin-bottom: 9px;         /* space between inputs */
+    border-radius: 8px;         /* elegant rounded corners */
+    border: 1px solid #d0d5dd; /* soft border */
+    font-size: 12px;
+    outline: none;
+    transition: all 0.25s ease;
+    background-color: #ffffff;
+}
+
+/* Focus effect */
+.participant-amount-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+}
+
+/* Placeholder styling */
+.participant-amount-input::placeholder {
+    color: #9aa0a6;
+    font-size: 13px;
+}
+
+/* Remove number input arrows (optional but cleaner) */
+.participant-amount-input::-webkit-outer-spin-button,
+.participant-amount-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.participant-amount-input {
+    -moz-appearance: textfield;
+}
+
 
 /* Toast Notification */
 .toast {

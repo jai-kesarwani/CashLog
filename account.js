@@ -40,27 +40,50 @@ document.addEventListener('DOMContentLoaded', function() {
         return `${symbol}${amount.toFixed(2)}`;
     }
 
-    // Initialize Account Section
-    function initAccountSection() {
-        if (!currentUser) return;
+    // Load user data and initialize UI
+    function loadUser() {
+        const loggedInUser = localStorage.getItem('loggedInUser');
+        if (loggedInUser) {
+            currentUser = JSON.parse(loggedInUser);
+            updateProfileUI(currentUser);
+        }
+    }
 
-        // Load saved profile picture
-        const savedProfilePic = localStorage.getItem('profilePicture');
-        if (savedProfilePic) {
-            const preview = document.getElementById('profile-picture-preview');
-            const img = document.getElementById('profile-picture-img');
-            const icon = document.getElementById('profile-picture-icon');
-            if (preview && img && icon) {
-                img.src = savedProfilePic;
-                img.style.display = 'block';
-                icon.style.display = 'none';
-            }
+    // Central function to update profile UI across the app
+    function updateProfileUI(user) {
+        if (!user) return;
+
+        // Update profile card name
+        const profileNameDisplay = document.getElementById('profile-name-display');
+        if (profileNameDisplay) {
+            profileNameDisplay.textContent = user.name || 'User';
         }
 
-        // Update all UI elements
-        updateProfileUI(currentUser);
+        // Update personal info section
+        const infoName = document.getElementById('info-name');
+        const infoEmail = document.getElementById('info-email');
+        const infoPhone = document.getElementById('info-phone');
+        const infoCountry = document.getElementById('info-country');
 
-        // Load saved currency
+        if (infoName) infoName.textContent = user.name || 'Not set';
+        if (infoEmail) infoEmail.textContent = user.email || 'Not set';
+        if (infoPhone) infoPhone.textContent = user.phone || 'Not set';
+        if (infoCountry) infoCountry.textContent = user.country || 'Not set';
+
+        // Update sidebar welcome message
+        const welcomeMsg = document.getElementById('welcome-message');
+        if (welcomeMsg) {
+            welcomeMsg.textContent = `Welcome, ${user.name} 👋`;
+        }
+
+        // Update profile picture
+        const savedProfilePic = localStorage.getItem('profilePicture');
+        if (savedProfilePic) {
+            updateProfilePicture(savedProfilePic);
+            updateSidebarAvatar(savedProfilePic);
+        }
+
+        // Update currency selection
         const currencySelect = document.getElementById('currency-select');
         if (currencySelect) {
             const savedCurrency = getSelectedCurrency();
@@ -68,225 +91,86 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Central UI Update Function - Updates all profile-related UI elements
-    function updateProfileUI(user) {
-        if (!user) return;
-
-        // Update Profile Card
-        const profileNameDisplay = document.getElementById('profile-name-display');
-        if (profileNameDisplay && user.name) {
-            profileNameDisplay.textContent = user.name;
+    // Update profile picture display
+    function updateProfilePicture(imageSrc) {
+        const preview = document.getElementById('profile-picture-preview');
+        const img = document.getElementById('profile-picture-img');
+        const icon = document.getElementById('profile-picture-icon');
+        
+        if (preview && img && icon) {
+            img.src = imageSrc;
+            img.style.display = 'block';
+            icon.style.display = 'none';
         }
+    }
 
-        // Update Profile Picture in card
-        const profilePreview = document.getElementById('profile-picture-preview');
-        const profileImg = document.getElementById('profile-picture-img');
-        const profileIcon = document.getElementById('profile-picture-icon');
-        const savedProfilePic = localStorage.getItem('profilePicture');
-        if (savedProfilePic && profilePreview && profileImg && profileIcon) {
-            profileImg.src = savedProfilePic;
-            profileImg.style.display = 'block';
-            profileIcon.style.display = 'none';
-        }
-
-        // Update Personal Info Section
-        const infoName = document.getElementById('info-name');
-        const infoEmail = document.getElementById('info-email');
-        const infoPhone = document.getElementById('info-phone');
-        const infoCountry = document.getElementById('info-country');
-
-        if (infoName && user.name) {
-            infoName.textContent = user.name;
-        }
-
-        if (infoEmail && user.email) {
-            infoEmail.textContent = user.email;
-        }
-
-        if (infoPhone) {
-            infoPhone.textContent = user.phone || 'Not set';
-        }
-
-        if (infoCountry) {
-            infoCountry.textContent = user.country || 'Not set';
-        }
-
-        // Update Sidebar Welcome Message
-        const welcomeMsg = document.getElementById('welcome-message');
-        if (welcomeMsg && user.name) {
-            welcomeMsg.textContent = `Welcome, ${user.name} 👋`;
-        }
-
-        // Update Sidebar Avatar
+    // Update Sidebar Avatar
+    function updateSidebarAvatar(imageSrc) {
         const sidebarAvatar = document.getElementById('user-avatar');
-        if (sidebarAvatar && savedProfilePic) {
-            sidebarAvatar.innerHTML = `<img src="${savedProfilePic}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+        if (sidebarAvatar) {
+            sidebarAvatar.innerHTML = `<img src="${imageSrc}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
         }
     }
 
-    // Load User Data from Storage
-    function loadUser() {
-        const loggedInUser = localStorage.getItem('loggedInUser');
-        if (loggedInUser) {
-            currentUser = JSON.parse(loggedInUser);
-            updateProfileUI(currentUser);
-        }
-        return currentUser;
+    // Initialize Account Section
+    function initAccountSection() {
+        loadUser();
     }
 
-    // Update Profile Card (legacy - kept for compatibility)
-    function updateProfileCard() {
-        updateProfileUI(currentUser);
-    }
-
-    // Update Personal Info Section (legacy - kept for compatibility)
-    function updatePersonalInfo() {
-        updateProfileUI(currentUser);
-    }
-
-    // Edit Profile Button
+    // Edit Profile Modal
     const editProfileBtn = document.getElementById('edit-profile-btn');
     const editProfileModal = document.getElementById('edit-profile-modal');
-    const cancelEditProfileBtn = document.getElementById('cancel-edit-profile');
+    const cancelEditProfileBtn = document.getElementById('cancel-edit-profile-btn');
     const editProfileForm = document.getElementById('edit-profile-form');
 
-    if (editProfileBtn && editProfileModal) {
+    if (editProfileBtn) {
         editProfileBtn.addEventListener('click', () => {
-            // Populate form with current data
-            document.getElementById('edit-profile-name').value = currentUser.name || '';
-            document.getElementById('edit-profile-email').value = currentUser.email || '';
-            document.getElementById('edit-profile-phone').value = currentUser.phone || '';
-            document.getElementById('edit-profile-country').value = currentUser.country || '';
-
-            // Load current profile picture in modal
-            const savedProfilePic = localStorage.getItem('profilePicture');
-            const editPreview = document.getElementById('edit-profile-preview');
-            const editImg = document.getElementById('edit-profile-img');
-            const editIcon = document.getElementById('edit-profile-icon');
-
-            if (savedProfilePic && editPreview && editImg && editIcon) {
-                editImg.src = savedProfilePic;
-                editImg.style.display = 'block';
-                editIcon.style.display = 'none';
-            }
-
-            // Load avatar selection in modal
-            const savedAvatar = localStorage.getItem('selectedAvatar');
-            document.querySelectorAll('#edit-avatar-grid .avatar-option').forEach(opt => {
-                opt.classList.remove('selected');
-                if (opt.getAttribute('data-avatar') === savedAvatar) {
-                    opt.classList.add('selected');
-                }
-            });
-
-            editProfileModal.style.display = 'flex';
-            document.body.style.overflow = 'hidden';
+            openEditProfileModal();
         });
     }
 
     if (cancelEditProfileBtn) {
         cancelEditProfileBtn.addEventListener('click', () => {
-            editProfileModal.style.display = 'none';
-            document.body.style.overflow = '';
-            document.getElementById('edit-profile-error').style.display = 'none';
+            closeModal('edit-profile-modal');
         });
     }
 
-    // Close modal when clicking outside
-    if (editProfileModal) {
-        editProfileModal.addEventListener('click', (e) => {
-            if (e.target === editProfileModal) {
-                editProfileModal.style.display = 'none';
-                document.body.style.overflow = '';
-                document.getElementById('edit-profile-error').style.display = 'none';
+    function openEditProfileModal() {
+        if (!currentUser) return;
+
+        // Populate form with current user data
+        document.getElementById('edit-name').value = currentUser.name || '';
+        document.getElementById('edit-email').value = currentUser.email || '';
+        document.getElementById('edit-phone').value = currentUser.phone || '';
+        document.getElementById('edit-country').value = currentUser.country || '';
+
+        // Load current profile picture
+        const savedProfilePic = localStorage.getItem('profilePicture');
+        if (savedProfilePic) {
+            const previewImg = document.getElementById('edit-profile-picture-img');
+            const icon = document.getElementById('edit-profile-picture-icon');
+            previewImg.src = savedProfilePic;
+            previewImg.style.display = 'block';
+            icon.style.display = 'none';
+        }
+
+        // Load saved avatar selection in modal
+        const savedAvatar = localStorage.getItem('selectedAvatar');
+        if (savedAvatar) {
+            const avatarOption = document.querySelector(`#edit-avatar-grid .avatar-option[data-avatar="${savedAvatar}"]`);
+            if (avatarOption) {
+                avatarOption.classList.add('selected');
             }
-        });
+        }
+
+        // Show modal
+        editProfileModal.classList.add('active');
+        document.body.style.overflow = 'hidden';
     }
 
-    // Close modal with X button
-    const editProfileCloseBtn = editProfileModal ? editProfileModal.querySelector('.close-modal') : null;
-    if (editProfileCloseBtn) {
-        editProfileCloseBtn.addEventListener('click', () => {
-            editProfileModal.style.display = 'none';
-            document.body.style.overflow = '';
-            document.getElementById('edit-profile-error').style.display = 'none';
-        });
-    }
-
-    // Edit Profile Form Submission
-    if (editProfileForm) {
-        editProfileForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-
-            const name = document.getElementById('edit-profile-name').value.trim();
-            const email = document.getElementById('edit-profile-email').value.trim();
-            const phone = document.getElementById('edit-profile-phone').value.trim();
-            const country = document.getElementById('edit-profile-country').value;
-            const errorDiv = document.getElementById('edit-profile-error');
-
-            // Validation
-            if (!name || !email) {
-                errorDiv.textContent = 'Name and email are required.';
-                errorDiv.style.display = 'block';
-                return;
-            }
-
-            // Email validation
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
-                errorDiv.textContent = 'Please enter a valid email address.';
-                errorDiv.style.display = 'block';
-                return;
-            }
-
-            // Phone validation (if provided)
-            if (phone && phone.length < 10) {
-                errorDiv.textContent = 'Phone number must be at least 10 digits.';
-                errorDiv.style.display = 'block';
-                return;
-            }
-
-            // Update user data
-            currentUser.name = name;
-            currentUser.email = email;
-            currentUser.phone = phone;
-            currentUser.country = country;
-            localStorage.setItem('loggedInUser', JSON.stringify(currentUser));
-
-            // Update users array
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            const userIndex = users.findIndex(u => u.id === currentUser.id);
-            if (userIndex !== -1) {
-                users[userIndex].name = name;
-                users[userIndex].email = email;
-                users[userIndex].phone = phone;
-                users[userIndex].country = country;
-                localStorage.setItem('users', JSON.stringify(users));
-            }
-
-            // Update UI immediately with central function
-            updateProfileUI(currentUser);
-
-            // Dispatch event for other components
-            window.dispatchEvent(new CustomEvent('nameChanged', {
-                detail: { newName: name }
-            }));
-
-            // Close modal
-            editProfileModal.style.display = 'none';
-            document.body.style.overflow = '';
-            errorDiv.style.display = 'none';
-
-            // Show success toast
-            if (window.showToast) {
-                window.showToast('Profile updated successfully!', 'success');
-            }
-        });
-    }
-
-    // Edit Profile Avatar Upload
-    const editUploadBtn = document.getElementById('edit-upload-btn');
-    const editFileInput = document.getElementById('edit-profile-upload');
+    // Profile Picture Upload in Edit Modal
+    const editUploadBtn = document.getElementById('edit-upload-picture-btn');
+    const editFileInput = document.getElementById('edit-profile-picture-upload');
 
     if (editUploadBtn && editFileInput) {
         editUploadBtn.addEventListener('click', () => {
@@ -299,65 +183,138 @@ document.addEventListener('DOMContentLoaded', function() {
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     const base64 = event.target.result;
-                    localStorage.setItem('profilePicture', base64);
-                    localStorage.removeItem('selectedAvatar');
                     
-                    const preview = document.getElementById('edit-profile-preview');
-                    const img = document.getElementById('edit-profile-img');
-                    const icon = document.getElementById('edit-profile-icon');
-                    
-                    img.src = base64;
-                    img.style.display = 'block';
+                    const previewImg = document.getElementById('edit-profile-picture-img');
+                    const icon = document.getElementById('edit-profile-picture-icon');
+                    previewImg.src = base64;
+                    previewImg.style.display = 'block';
                     icon.style.display = 'none';
                     
                     // Remove selected class from all avatars
                     document.querySelectorAll('#edit-avatar-grid .avatar-option').forEach(opt => {
                         opt.classList.remove('selected');
                     });
-                    
-                    // Update main profile preview
-                    updateProfileUI(currentUser);
                 };
                 reader.readAsDataURL(file);
             }
         });
     }
 
-    // Edit Profile Avatar Selection
+    // Avatar Selection in Edit Modal
     const editAvatarOptions = document.querySelectorAll('#edit-avatar-grid .avatar-option');
     editAvatarOptions.forEach(option => {
         option.addEventListener('click', () => {
-            // Remove selected class from all
             editAvatarOptions.forEach(opt => opt.classList.remove('selected'));
-
-            // Add selected to clicked
             option.classList.add('selected');
-
-            const avatarName = option.getAttribute('data-avatar');
-            const avatarPath = option.getAttribute('data-avatar-path') || '';
-            localStorage.setItem('selectedAvatar', avatarName);
-            localStorage.setItem('selectedAvatarPath', avatarPath);
-            localStorage.removeItem('profilePicture');
-
-            // Get avatar image source
+            
             const img = option.querySelector('img');
             if (img && img.src) {
-                const preview = document.getElementById('edit-profile-preview');
-                const previewImg = document.getElementById('edit-profile-img');
-                const icon = document.getElementById('edit-profile-icon');
-
+                const previewImg = document.getElementById('edit-profile-picture-img');
+                const icon = document.getElementById('edit-profile-picture-icon');
                 previewImg.src = img.src;
                 previewImg.style.display = 'block';
                 icon.style.display = 'none';
-
-                // Store the avatar path
-                localStorage.setItem('profilePicture', img.src);
-
-                // Update main profile preview using central function
-                updateProfileUI(currentUser);
             }
         });
     });
+
+    // Handle Edit Profile Form Submission
+    if (editProfileForm) {
+        editProfileForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('edit-name').value.trim();
+            const email = document.getElementById('edit-email').value.trim();
+            const phone = document.getElementById('edit-phone').value.trim();
+            const country = document.getElementById('edit-country').value;
+            
+            const errorDiv = document.getElementById('edit-profile-error');
+            const successDiv = document.getElementById('edit-profile-success');
+            
+            // Validation
+            if (!name || !email) {
+                errorDiv.textContent = 'Name and Email are required.';
+                errorDiv.style.display = 'block';
+                successDiv.style.display = 'none';
+                return;
+            }
+            
+            // Email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                errorDiv.textContent = 'Please enter a valid email address.';
+                errorDiv.style.display = 'block';
+                successDiv.style.display = 'none';
+                return;
+            }
+            
+            // Phone validation (optional but if provided, should be valid)
+            if (phone && phone.length < 10) {
+                errorDiv.textContent = 'Phone number should be at least 10 digits.';
+                errorDiv.style.display = 'block';
+                successDiv.style.display = 'none';
+                return;
+            }
+            
+            // Update user data
+            currentUser.name = name;
+            currentUser.email = email;
+            currentUser.phone = phone;
+            currentUser.country = country;
+            
+            localStorage.setItem('loggedInUser', JSON.stringify(currentUser));
+            
+            // Update users array
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const userIndex = users.findIndex(u => u.id === currentUser.id);
+            if (userIndex !== -1) {
+                users[userIndex] = currentUser;
+                localStorage.setItem('users', JSON.stringify(users));
+            }
+            
+            // Save profile picture
+            const previewImg = document.getElementById('edit-profile-picture-img');
+            if (previewImg && previewImg.src && previewImg.style.display !== 'none') {
+                localStorage.setItem('profilePicture', previewImg.src);
+                updateProfilePicture(previewImg.src);
+                updateSidebarAvatar(previewImg.src);
+            }
+            
+            // Save avatar selection
+            const selectedAvatar = document.querySelector('#edit-avatar-grid .avatar-option.selected');
+            if (selectedAvatar) {
+                localStorage.setItem('selectedAvatar', selectedAvatar.getAttribute('data-avatar'));
+            }
+            
+            // Update UI across app
+            updateProfileUI(currentUser);
+            
+            // Dispatch event for other components
+            window.dispatchEvent(new CustomEvent('profileUpdated', {
+                detail: { user: currentUser }
+            }));
+            
+            // Show success message
+            errorDiv.style.display = 'none';
+            successDiv.textContent = 'Profile updated successfully!';
+            successDiv.style.display = 'block';
+            
+            // Close modal after delay
+            setTimeout(() => {
+                closeModal('edit-profile-modal');
+                successDiv.style.display = 'none';
+            }, 1500);
+        });
+    }
+
+    // Close modal helper
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    }
 
     // Currency Selection
     const currencySelect = document.getElementById('currency-select');
@@ -434,7 +391,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            // Check minimum length
+            // Check minimum password length
             if (newPassword.length < 6) {
                 passwordError.textContent = 'New password must be at least 6 characters long.';
                 passwordError.style.display = 'block';
@@ -490,10 +447,26 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Split Bill Modal Cancel Button
+    const cancelBillBtn = document.getElementById('cancel-bill-btn');
+    if (cancelBillBtn) {
+        cancelBillBtn.addEventListener('click', () => {
+            closeModal('bill-modal');
+        });
+    }
+
+    // Listen for profile updates from other parts of the app
+    window.addEventListener('profileUpdated', (e) => {
+        if (e.detail.user) {
+            currentUser = e.detail.user;
+            updateProfileUI(currentUser);
+        }
+    });
+
     // Initialize on load
     initAccountSection();
-
-    // Expose functions globally for use in other parts of the app
+    
+    // Expose functions globally
     window.getSelectedCurrency = getSelectedCurrency;
     window.getCurrencySymbol = getCurrencySymbol;
     window.formatCurrency = formatCurrency;

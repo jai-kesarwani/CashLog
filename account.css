@@ -37,74 +37,146 @@
     text-align: center;
 }
 
-.profile-name-display {
-    margin: 20px 0;
+.profile-card-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
 }
 
-.profile-name-display h4 {
+.profile-name {
     font-size: 20px;
     font-weight: 600;
     color: var(--dark-color);
-    margin-bottom: 5px;
-}
-
-.profile-name-display p {
-    font-size: 14px;
-    color: var(--gray-color);
 }
 
 /* Personal Info Section */
 .personal-info-section {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 15px;
 }
 
 .info-item {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 5px;
 }
 
 .info-item label {
-    font-size: 14px;
+    font-size: 12px;
     color: var(--gray-color);
     font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .info-value {
-    padding: 12px 15px;
-    background-color: var(--light-gray);
-    border-radius: var(--border-radius);
-    font-size: 16px;
-    font-weight: 500;
+    font-size: 15px;
     color: var(--dark-color);
+    font-weight: 500;
+    padding: 10px 12px;
+    background-color: var(--light-gray);
+    border-radius: 6px;
 }
 
 /* Settings Section */
 .settings-section {
-    display: flex;
-    flex-direction: column;
-    gap: 25px;
+    margin-bottom: 25px;
+    padding-bottom: 25px;
+    border-bottom: 1px solid var(--light-gray);
 }
 
-.setting-item {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+.settings-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
 }
 
-.setting-item h4 {
-    font-size: 16px;
+.settings-section h4 {
+    font-size: 14px;
     font-weight: 600;
-    color: var(--dark-color);
-    margin-bottom: 5px;
+    color: var(--gray-color);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.setting-divider {
-    height: 1px;
-    background-color: var(--light-gray);
-    margin: 10px 0;
+/* Modal Styles */
+.modal-content.bill-modal-content,
+.modal-content.edit-profile-modal-content {
+    max-width: 550px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 12px;
+}
+
+.modal-header {
+    padding: 20px 25px;
+    border-bottom: 1px solid var(--light-gray);
+    background-color: var(--light-color);
+    border-radius: 12px 12px 0 0;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.modal-body {
+    padding: 25px;
+    max-height: calc(90vh - 140px);
+    overflow-y: auto;
+}
+
+.modal-footer {
+    padding: 15px 25px;
+    border-top: 1px solid var(--light-gray);
+    background-color: var(--light-color);
+    border-radius: 0 0 12px 12px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    position: sticky;
+    bottom: 0;
+}
+
+/* Bill Modal Sections */
+.bill-section {
+    margin-bottom: 20px;
+}
+
+.bill-section h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-color);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Error and Success Messages */
+.error-message,
+.success-message {
+    padding: 12px 15px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-top: 15px;
+}
+
+.error-message {
+    background-color: #fee;
+    color: #c33;
+    border: 1px solid #fcc;
+}
+
+.success-message {
+    background-color: #efe;
+    color: #3c3;
+    border: 1px solid #cfc;
 }
 
 /* Profile Picture Section */
@@ -576,29 +648,6 @@
 
     .password-actions {
         flex-direction: column;
-    }
-
-    .form-actions {
-        flex-direction: column;
-    }
-
-    .modal-footer {
-        flex-direction: column;
-    }
-}
-
-@media (max-width: 480px) {
-    .profile-name-display h4 {
-        font-size: 18px;
-    }
-
-    .info-value {
-        font-size: 14px;
-    }
-
-    .edit-icon-btn {
-        padding: 4px 6px;
-        font-size: 12px;
     }
 }
 

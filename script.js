@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const themeToggle = document.getElementById('theme-icon');
     const navItems = document.querySelectorAll('.main-nav li');
     const contentSections = document.querySelectorAll('.content-section');
-    
+
     // Modal elements
     const transactionModal = document.getElementById('transaction-modal');
     const categoryModal = document.getElementById('category-modal');
@@ -11,14 +11,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const goalUpdateModal = document.getElementById('goal-update-modal');
     const billModal = document.getElementById('bill-modal');
     const editProfileModal = document.getElementById('edit-profile-modal');
-    const exportModal = document.getElementById('export-modal');
+    // const exportModal = document.getElementById('export-modal');
     const addTransactionBtn = document.getElementById('add-transaction');
     const addCategoryBtn = document.getElementById('add-category');
     const addGoalBtn = document.getElementById('add-goal');
     const addBillBtn = document.getElementById('add-bill');
-    const exportDataBtn = document.getElementById('export-data');
-    const editProfileBtn = document.getElementById('edit-profile');
-    const logoutBtn = document.getElementById('logout-btn');
     const closeModalBtns = document.querySelectorAll('.close-modal');
     
     // Form elements
@@ -27,7 +24,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const goalForm = document.getElementById('goal-form');
     const goalUpdateForm = document.getElementById('goal-update-form');
     const billForm = document.getElementById('bill-form');
-    const editProfileForm = document.getElementById('edit-profile-form');
     
     // Chart elements
     let categoryChart, monthlyChart, incomeExpenseChart, trendsChart;
@@ -41,6 +37,21 @@ document.addEventListener('DOMContentLoaded', function() {
     if (loggedInUser) {
         currentUser = JSON.parse(loggedInUser);
     }
+
+    // Sidebar Logout button
+    
+    const logoutBtnSidebar = document.getElementById('logout-btn-sidebar');
+
+if (logoutBtnSidebar) {
+    logoutBtnSidebar.addEventListener('click', () => {
+        // Clear login/session
+        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('loggedInUser');
+
+        // Redirect to login
+        window.location.href = 'login.html';
+    });
+}
     
     // App state
     let state = {
@@ -93,27 +104,27 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000);
     }
     
-    // Logout handler
-    function handleLogout() {
-        if (confirm('Are you sure you want to logout?')) {
-            localStorage.removeItem('loggedInUser');
-            localStorage.removeItem('isLoggedIn');
-            currentUser = null;
-            showToast('✅ Logged out successfully. See you soon!', 'success');
-            setTimeout(() => {
-                window.location.href = 'login.html';
-            }, 1000);
+    // Listen for name changes
+    window.addEventListener('nameChanged', (e) => {
+        const newName = e.detail.newName;
+        updateUserDisplay();
+    });
+    
+    // Helper function to get currency symbol
+    function getCurrencySymbol() {
+        if (window.getCurrencySymbol) {
+            const currency = window.getSelectedCurrency ? window.getSelectedCurrency() : 'INR';
+            return window.getCurrencySymbol(currency);
         }
+        return '₹';
     }
     
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', handleLogout);
-    }
-    
-    // Sidebar logout handler
-    const logoutBtnSidebar = document.getElementById('logout-btn-sidebar');
-    if (logoutBtnSidebar) {
-        logoutBtnSidebar.addEventListener('click', handleLogout);
+    // Helper function to format currency
+    function formatCurrencyAmount(amount) {
+        if (window.formatCurrency) {
+            return window.formatCurrency(amount);
+        }
+        return formatCurrencyAmount(amount);
     }
     
     // Initialize the app
@@ -129,6 +140,17 @@ document.addEventListener('DOMContentLoaded', function() {
         renderBills();
         setCurrentMonthYear();
         updateUserDisplay();
+        
+        // Listen for currency changes
+        window.addEventListener('currencyChanged', () => {
+            updateSummaryCards();
+            renderRecentTransactions();
+            renderTransactionsTable();
+            renderCategories();
+            renderGoals();
+            renderBills();
+        });
+    // end of init
     }
     
     // Initialize on page load
@@ -238,8 +260,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (addCategoryBtn) addCategoryBtn.addEventListener('click', () => openModal('category'));
         if (addGoalBtn) addGoalBtn.addEventListener('click', () => openModal('goal'));
         if (addBillBtn) addBillBtn.addEventListener('click', () => openModal('bill'));
-        if (exportDataBtn) exportDataBtn.addEventListener('click', () => openModal('export'));
-        if (editProfileBtn) editProfileBtn.addEventListener('click', () => openModal('edit-profile'));
         
         // Modal close buttons
         closeModalBtns.forEach(btn => {
@@ -259,7 +279,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (goalForm) goalForm.addEventListener('submit', handleGoalSubmit);
         if (goalUpdateForm) goalUpdateForm.addEventListener('submit', handleGoalUpdateSubmit);
         if (billForm) billForm.addEventListener('submit', handleBillSubmit);
-        if (editProfileForm) editProfileForm.addEventListener('submit', handleEditProfileSubmit);
         
         // Bill split type change is now handled in prepareBillModal
         
@@ -319,22 +338,26 @@ document.addEventListener('DOMContentLoaded', function() {
         if (type === 'transaction') {
             prepareTransactionModal();
             transactionModal.classList.add('active');
+            document.body.classList.add('modal-open');
         } else if (type === 'category') {
             prepareCategoryModal();
             categoryModal.classList.add('active');
+            document.body.classList.add('modal-open');
         } else if (type === 'goal') {
             prepareGoalModal();
             goalModal.classList.add('active');
+            document.body.classList.add('modal-open');
         } else if (type === 'goal-update') {
             goalUpdateModal.classList.add('active');
+            document.body.classList.add('modal-open');
         } else if (type === 'bill') {
             prepareBillModal();
             billModal.classList.add('active');
-        } else if (type === 'edit-profile') {
-            prepareEditProfileModal();
-            editProfileModal.classList.add('active');
+            document.body.classList.add('modal-open');
         } else if (type === 'export') {
+            prepareExportModal();
             exportModal.classList.add('active');
+            document.body.classList.add('modal-open');
         }
     }
     
@@ -343,6 +366,8 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.modal').forEach(modal => {
             modal.classList.remove('active');
         });
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
     }
     
     // Prepare transaction modal
@@ -541,10 +566,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const balance = income - expenses;
         const savingsRate = income > 0 ? ((income - expenses) / income * 100).toFixed(1) : 0;
         
-        // Update DOM
-        document.getElementById('total-balance').textContent = `₹${balance.toFixed(2)}`;
-        document.getElementById('monthly-income').textContent = `₹${income.toFixed(2)}`;
-        document.getElementById('monthly-expenses').textContent = `₹${expenses.toFixed(2)}`;
+        // Update DOM with currency formatting
+        const symbol = getCurrencySymbol();
+        document.getElementById('total-balance').textContent = formatCurrencyAmount(balance);
+        document.getElementById('monthly-income').textContent = formatCurrencyAmount(income);
+        document.getElementById('monthly-expenses').textContent = formatCurrencyAmount(expenses);
         document.getElementById('savings-rate').textContent = `${savingsRate}%`;
         
         // Update change indicator
@@ -592,7 +618,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
                 <div class="transaction-amount ${trans.type}">
-                    ${trans.type === 'income' ? '+' : '-'}₹${trans.amount.toFixed(2)}
+                    ${trans.type === 'income' ? '+' : '-'}${formatCurrencyAmount(trans.amount)}
                 </div>
             `;
             
@@ -685,7 +711,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </span>
                 </td>
                 <td class="${trans.type === 'income' ? 'income' : 'expense'}">
-                    ${trans.type === 'income' ? '+' : '-'}₹${trans.amount.toFixed(2)}
+                    ${trans.type === 'income' ? '+' : '-'}${formatCurrencyAmount(trans.amount)}
                 </td>
                 <td class="action-buttons">
                     <button class="action-btn edit-btn" data-id="${trans.id}">
@@ -818,18 +844,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <div class="budget-title">
                         <h3>${category.name}</h3>
-                        <p>Budget: ₹${category.budget.toFixed(2)}</p>
+                        <p>Budget: ${formatCurrencyAmount(category.budget)}</p>
                     </div>
                 </div>
                 <div class="budget-amount">
-                    Spent: ₹${spent.toFixed(2)} / Remaining: ₹${remaining.toFixed(2)}
+                    Spent: ${formatCurrencyAmount(spent)} / Remaining: ${formatCurrencyAmount(remaining)}
                 </div>
                 <div class="budget-progress">
                     <div class="budget-progress-bar" style="width: ${percentage}%; background-color: ${category.color || '#4361ee'}"></div>
                 </div>
                 <div class="budget-stats">
                     <span>${percentage.toFixed(0)}% of budget</span>
-                    <span>₹${remaining.toFixed(2)} left</span>
+                    <span>${formatCurrencyAmount(remaining)} left</span>
                 </div>
                 <button class="edit-budget-btn" data-id="${category.id}"><i class="fa-solid fa-pen"></i> Edit</button>
             `;
@@ -887,7 +913,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (goal.history && goal.history.length > 0) {
                 historyHTML = '<div class="goal-history"><h4>Update History</h4><ul class="goal-history-list">';
                 goal.history.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(entry => {
-                    historyHTML += `<li class="goal-history-item"><i class="fas fa-plus-circle"></i>₹${entry.amount.toFixed(2)} added on ${formatDate(entry.date)}</li>`;
+                    historyHTML += `<li class="goal-history-item"><i class="fas fa-plus-circle"></i>${formatCurrencyAmount(entry.amount)} added on ${formatDate(entry.date)}</li>`;
                 });
                 historyHTML += '</ul></div>';
             }
@@ -896,7 +922,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="goal-header">
                     <div class="goal-title">
                         <h3>${goal.name}</h3>
-                        <p>Target: ₹${goal.target.toFixed(2)}</p>
+                        <p>Target: ${formatCurrencyAmount(goal.target)}</p>
                     </div>
                     <span>${daysLeft > 0 ? `${daysLeft} days left` : 'Completed'}</span>
                 </div>
@@ -904,7 +930,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="goal-progress-bar" style="width: ${Math.min(percentage, 100)}%"></div>
                 </div>
                 <div class="goal-details">
-                    <span class="goal-amount">Saved: ₹${goal.saved.toFixed(2)} (${percentage.toFixed(1)}%)</span>
+                    <span class="goal-amount">Saved: ${formatCurrencyAmount(goal.saved)} (${percentage.toFixed(1)}%)</span>
                     <span class="goal-date">${formatDate(goal.date)}</span>
                 </div>
                 ${historyHTML}
@@ -1453,14 +1479,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 previewHTML += `
                     <tr>
                         <td>${participant}${participant === currentUser.name ? ' (You)' : ''}</td>
-                        <td>₹${amountPerPerson.toFixed(2)}</td>
+                        <td>${formatCurrencyAmount(amountPerPerson)}</td>
                     </tr>
                 `;
             });
             previewHTML += `
                 <tr>
                     <td><strong>Total</strong></td>
-                    <td><strong>₹${totalAmount.toFixed(2)}</strong></td>
+                    <td><strong>${formatCurrencyAmount(totalAmount)}</strong></td>
                 </tr>
             </table>`;
             previewContainer.innerHTML = previewHTML;
@@ -1521,7 +1547,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (diff > 0.01) {
             validationMsg.style.display = 'block';
-            validationMsg.textContent = `⚠️ Amounts must sum up to the total bill. Current: ₹${totalSplit.toFixed(2)}, Required: ₹${totalAmount.toFixed(2)}`;
+            validationMsg.textContent = `⚠️ Amounts must sum up to the total bill. Current: ${formatCurrencyAmount(totalSplit)}, Required: ${formatCurrencyAmount(totalAmount)}`;
         } else {
             validationMsg.style.display = 'none';
         }
@@ -1575,6 +1601,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
+        // Initialize payment status - default: current user paid (they're creating the bill)
+        const paymentStatus = {};
+        allParticipants.forEach(p => {
+            paymentStatus[p] = p === currentUser.name ? 'paid' : 'unpaid';
+        });
+        
         const newBill = {
             id: Date.now(),
             name,
@@ -1582,6 +1614,8 @@ document.addEventListener('DOMContentLoaded', function() {
             splitType,
             participants: allParticipants,
             splitDetails,
+            paymentStatus,
+            paidBy: currentUser.name, // Default: current user paid
             settled: false,
             createdAt: new Date()
         };
@@ -1595,6 +1629,25 @@ document.addEventListener('DOMContentLoaded', function() {
         showToast('Bill added successfully!', 'success');
     }
     
+    // Get avatar for a participant (assigns avatars based on name hash)
+    function getParticipantAvatar(participantName) {
+        const avatars = [
+            'avatars/a28e592b-4bee-41c7-9df1-1ac2bd74bb3c.jpeg',
+            'avatars/62f23d62-255a-47c4-a59e-9e680d07fa68.jpg',
+            'avatars/avatar 3.jpg',
+            'avatars/avatar 4.jpg',
+            'avatars/avatar 1.jpg'
+        ];
+        
+        // Create a simple hash from the name to consistently assign avatars
+        let hash = 0;
+        for (let i = 0; i < participantName.length; i++) {
+            hash = participantName.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const index = Math.abs(hash) % avatars.length;
+        return avatars[index];
+    }
+    
     // Render split bills
     function renderBills() {
         const container = document.getElementById('split-bills-list');
@@ -1604,6 +1657,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (state.splitBills.length === 0) {
             container.innerHTML = '<p class="no-bills">No split bills yet. Add your first bill!</p>';
+            renderSplitwiseHistory();
             return;
         }
         
@@ -1611,15 +1665,61 @@ document.addEventListener('DOMContentLoaded', function() {
             const billEl = document.createElement('div');
             billEl.className = 'bill-card';
             
-            let summaryRows = '';
+            // Initialize payment status if not exists
+            if (!bill.paymentStatus) {
+                bill.paymentStatus = {};
+                // If someone paid the full bill, mark them as paid
+                if (bill.paidBy) {
+                    bill.paymentStatus[bill.paidBy] = 'paid';
+                    Object.keys(bill.splitDetails).forEach(p => {
+                        if (p !== bill.paidBy) {
+                            bill.paymentStatus[p] = 'unpaid';
+                        }
+                    });
+                } else {
+                    // Default: all unpaid
+                    Object.keys(bill.splitDetails).forEach(p => {
+                        bill.paymentStatus[p] = 'unpaid';
+                    });
+                }
+            }
+            
+            // Build participants list with avatars and payment status
+            let participantsHTML = '';
             Object.keys(bill.splitDetails).forEach(participant => {
-                summaryRows += `
-                    <tr>
-                        <td>${participant}</td>
-                        <td>₹${bill.splitDetails[participant].toFixed(2)}</td>
-                    </tr>
+                const avatar = getParticipantAvatar(participant);
+                const amount = bill.splitDetails[participant];
+                const isPaid = bill.paymentStatus[participant] === 'paid' || bill.settled;
+                const isCurrentUser = currentUser && participant === currentUser.name;
+                
+                participantsHTML += `
+                    <div class="participant-item">
+                        <div class="participant-info">
+                            <div class="participant-avatar">
+                                <img src="${avatar}" alt="${participant}" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-user\\'></i>';">
+                            </div>
+                            <div class="participant-details">
+                                <div class="participant-name">${participant}${isCurrentUser ? ' (You)' : ''}</div>
+                                <div class="participant-amount">${formatCurrency(amount)}</div>
+                            </div>
+                        </div>
+                        <div class="participant-status-section">
+                            <span class="participant-status ${isPaid ? 'paid' : 'unpaid'}">
+                                ${isPaid ? 'Paid' : 'Unpaid'}
+                            </span>
+                            ${!isPaid && !bill.settled && bill.paidBy ? `
+                                <button class="btn-secondary mark-paid-btn" data-bill-id="${bill.id}" data-participant="${participant}" data-payer="${bill.paidBy}">
+                                    Mark as Paid 
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
                 `;
             });
+            
+            // Get currency symbol
+            const currency = window.getSelectedCurrency ? window.getSelectedCurrency() : 'INR';
+            const symbol = window.getCurrencySymbol ? window.getCurrencySymbol(currency) : '₹';
             
             billEl.innerHTML = `
                 <div class="bill-header">
@@ -1629,23 +1729,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     </span>
                 </div>
                 <div class="bill-info">
-                    <p><strong>Total Amount:</strong> ₹${bill.totalAmount.toFixed(2)}</p>
+                    <p><strong>Total Amount:</strong> ${symbol}${bill.totalAmount.toFixed(2)}</p>
                     <p><strong>Split Type:</strong> ${bill.splitType === 'equal' ? 'Equal' : 'Unequal'}</p>
                     <p><strong>Created:</strong> ${formatDate(bill.createdAt)}</p>
+                    ${bill.paidBy ? `<p><strong>Paid By:</strong> ${bill.paidBy}</p>` : ''}
                 </div>
-                <div class="bill-summary">
-                    <h4>Split Summary</h4>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="text-align: left;">Friend Name</th>
-                                <th style="text-align: right;">Amount Owed</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${summaryRows}
-                        </tbody>
-                    </table>
+                <div class="bill-participants-list scrollable-participants">
+                    <h4>Participants</h4>
+                    ${participantsHTML}
                 </div>
                 <div class="bill-actions">
                     ${!bill.settled ? `
@@ -1676,6 +1767,91 @@ document.addEventListener('DOMContentLoaded', function() {
                 deleteBill(id);
             });
         });
+        
+        // Add event listeners for mark as paid buttons
+        document.querySelectorAll('.mark-paid-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const billId = parseInt(e.currentTarget.getAttribute('data-bill-id'));
+                const participant = e.currentTarget.getAttribute('data-participant');
+                const payer = e.currentTarget.getAttribute('data-payer');
+                markParticipantAsPaid(billId, participant, payer);
+            });
+        });
+        
+        // Render history after bills
+        renderSplitwiseHistory();
+    }
+    
+    // Mark participant as paid
+    function markParticipantAsPaid(billId, participant, payer) {
+        const bill = state.splitBills.find(b => b.id === billId);
+        if (bill && bill.paymentStatus) {
+            bill.paymentStatus[participant] = 'paid';
+            saveData();
+            renderBills();
+            showToast(`${participant} marked as paid to ${payer}`, 'success');
+        }
+    }
+    
+    // Render Splitwise History
+    function renderSplitwiseHistory() {
+        const container = document.getElementById('splitwise-history-list');
+        if (!container) return;
+        
+        // Aggregate totals per person
+        const personTotals = {};
+        
+        state.splitBills.forEach(bill => {
+            if (bill.settled) return; // Skip settled bills
+            
+            Object.keys(bill.splitDetails).forEach(participant => {
+                if (!personTotals[participant]) {
+                    personTotals[participant] = {
+                        total: 0,
+                        avatar: getParticipantAvatar(participant)
+                    };
+                }
+                
+                // Only add if participant hasn't paid
+                if (!bill.paymentStatus || bill.paymentStatus[participant] !== 'paid') {
+                    personTotals[participant].total += bill.splitDetails[participant];
+                }
+            });
+        });
+        
+        container.innerHTML = '';
+        
+        if (Object.keys(personTotals).length === 0) {
+            container.innerHTML = '<p class="no-history">No outstanding balances yet.</p>';
+            return;
+        }
+        
+        // Get currency symbol
+        const currency = window.getSelectedCurrency ? window.getSelectedCurrency() : 'INR';
+        const symbol = window.getCurrencySymbol ? window.getCurrencySymbol(currency) : '₹';
+        
+        // Sort by amount (highest first)
+        const sortedPeople = Object.keys(personTotals).sort((a, b) => 
+            personTotals[b].total - personTotals[a].total
+        );
+        
+        sortedPeople.forEach(person => {
+            const total = personTotals[person].total;
+            if (total <= 0) return; // Skip if no outstanding balance
+            
+            const historyItem = document.createElement('div');
+            historyItem.className = 'history-item';
+            historyItem.innerHTML = `
+                <div class="history-item-info">
+                    <div class="history-item-avatar">
+                        <img src="${personTotals[person].avatar}" alt="${person}" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-user\\'></i>';">
+                    </div>
+                    <span class="history-item-name">${person}${currentUser && person === currentUser.name ? ' (You)' : ''}</span>
+                </div>
+                <span class="history-item-amount">${symbol}${total.toFixed(2)}</span>
+            `;
+            container.appendChild(historyItem);
+        });
     }
     
     // Settle bill
@@ -1694,39 +1870,6 @@ document.addEventListener('DOMContentLoaded', function() {
             state.splitBills = state.splitBills.filter(b => b.id !== id);
             saveData();
             renderBills();
-        }
-    }
-    
-    // Prepare edit profile modal
-    function prepareEditProfileModal() {
-        if (currentUser) {
-            document.getElementById('edit-name').value = currentUser.name;
-            document.getElementById('edit-email').value = currentUser.email;
-        }
-    }
-    
-    // Handle edit profile form submission
-    function handleEditProfileSubmit(e) {
-        e.preventDefault();
-        
-        const name = document.getElementById('edit-name').value;
-        const email = document.getElementById('edit-email').value;
-        
-        // Update user in localStorage
-        const users = JSON.parse(localStorage.getItem('users') || '[]');
-        const userIndex = users.findIndex(u => u.id === currentUser.id);
-        
-        if (userIndex !== -1) {
-            users[userIndex].name = name;
-            users[userIndex].email = email;
-            localStorage.setItem('users', JSON.stringify(users));
-            
-            currentUser.name = name;
-            currentUser.email = email;
-            localStorage.setItem('loggedInUser', JSON.stringify(currentUser));
-            
-            updateUserDisplay();
-            closeModal();
         }
     }
     
@@ -1858,7 +2001,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             yPos += 10;
         });
-        
+
+          
         // Overall summary
         const allIncome = state.transactions
             .filter(t => t.type === 'income')
@@ -1892,4 +2036,448 @@ document.addEventListener('DOMContentLoaded', function() {
         
         closeModal();
     }
+    
+    // Open Export Modal
+    function openExportModal() {
+        prepareExportModal();
+        openModal('export');
+    }
+    
+    // Prepare Export Modal
+    function prepareExportModal() {
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        
+        // Calculate monthly summary
+        const monthlyTransactions = state.transactions.filter(trans => 
+            trans.date.getMonth() === currentMonth && 
+            trans.date.getFullYear() === currentYear
+        );
+        
+        const income = monthlyTransactions
+            .filter(trans => trans.type === 'income')
+            .reduce((sum, trans) => sum + trans.amount, 0);
+        
+        const expenses = monthlyTransactions
+            .filter(trans => trans.type === 'expense')
+            .reduce((sum, trans) => sum + trans.amount, 0);
+        
+        const savings = income - expenses;
+        const netBalance = income - expenses;
+        
+        // Category distribution
+        const categorySpending = {};
+        monthlyTransactions
+            .filter(trans => trans.type === 'expense')
+            .forEach(trans => {
+                const catName = state.categories.find(c => c.id === trans.categoryId)?.name || trans.category;
+                categorySpending[catName] = (categorySpending[catName] || 0) + trans.amount;
+            });
+        
+        // Splitwise summary
+        const totalOwed = state.splitBills
+            .filter(bill => !bill.settled)
+            .reduce((sum, bill) => {
+                let owed = 0;
+                Object.keys(bill.splitDetails).forEach(participant => {
+                    if (bill.paymentStatus && bill.paymentStatus[participant] !== 'paid') {
+                        owed += bill.splitDetails[participant];
+                    } else if (!bill.paymentStatus) {
+                        owed += bill.splitDetails[participant];
+                    }
+                });
+                return sum + owed;
+            }, 0);
+        
+        const totalLent = state.splitBills
+            .filter(bill => !bill.settled && bill.paidBy === currentUser?.name)
+            .reduce((sum, bill) => {
+                let lent = 0;
+                Object.keys(bill.splitDetails).forEach(participant => {
+                    if (participant !== currentUser?.name) {
+                        lent += bill.splitDetails[participant];
+                    }
+                });
+                return sum + lent;
+            }, 0);
+        
+        // Savings goals
+        const totalSaved = state.goals.reduce((sum, goal) => sum + goal.saved, 0);
+        const totalTarget = state.goals.reduce((sum, goal) => sum + goal.target, 0);
+        
+        // Update preview
+        const preview = document.getElementById('export-summary');
+        if (preview) {
+            const symbol = getCurrencySymbol();
+            preview.innerHTML = `
+                <div class="export-summary-item">
+                    <strong>Total Income:</strong> ${symbol}${income.toFixed(2)}
+                </div>
+                <div class="export-summary-item">
+                    <strong>Total Expenses:</strong> ${symbol}${expenses.toFixed(2)}
+                </div>
+                <div class="export-summary-item">
+                    <strong>Total Savings:</strong> ${symbol}${savings.toFixed(2)}
+                </div>
+                <div class="export-summary-item">
+                    <strong>Net Balance:</strong> ${symbol}${netBalance.toFixed(2)}
+                </div>
+                <div class="export-summary-item">
+                    <strong>Splitwise Owed:</strong> ${symbol}${totalOwed.toFixed(2)}
+                </div>
+                <div class="export-summary-item">
+                    <strong>Splitwise Lent:</strong> ${symbol}${totalLent.toFixed(2)}
+                </div>
+                <div class="export-summary-item">
+                    <strong>Savings Goals Progress:</strong> ${symbol}${totalSaved.toFixed(2)} / ${symbol}${totalTarget.toFixed(2)}
+                </div>
+            `;
+        }
+        
+        // Add event listeners
+        const exportPdfBtn = document.getElementById('export-pdf-btn');
+        const exportCsvBtn = document.getElementById('export-csv-btn');
+        const exportShareBtn = document.getElementById('export-share-btn');
+        
+        if (exportPdfBtn) {
+            exportPdfBtn.onclick = () => exportToPDF();
+        }
+        
+        if (exportCsvBtn) {
+            exportCsvBtn.onclick = () => exportToCSV();
+        }
+        
+        // Check if Web Share API is available
+        if (navigator.share && exportShareBtn) {
+            exportShareBtn.style.display = 'inline-block';
+            exportShareBtn.onclick = () => shareData();
+        }
+    }
+    
+    // Export to PDF
+    function exportToPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        const now = new Date();
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                          'July', 'August', 'September', 'October', 'November', 'December'];
+        const currentMonth = monthNames[now.getMonth()];
+        const currentYear = now.getFullYear();
+        
+        let yPos = 20;
+        const symbol = getCurrencySymbol();
+        
+        // Title
+        doc.setFontSize(18);
+        doc.text('Monthly Statement', 14, yPos);
+        yPos += 10;
+        doc.setFontSize(12);
+        doc.text(`${currentMonth} ${currentYear}`, 14, yPos);
+        doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, yPos + 7);
+        yPos += 15;
+        
+        // Summary Section
+        doc.setFontSize(14);
+        doc.text('Summary', 14, yPos);
+        yPos += 10;
+        doc.setFontSize(11);
+        
+        const monthlyTransactions = state.transactions.filter(trans => 
+            trans.date.getMonth() === now.getMonth() && 
+            trans.date.getFullYear() === now.getFullYear()
+        );
+        
+        const income = monthlyTransactions
+            .filter(trans => trans.type === 'income')
+            .reduce((sum, trans) => sum + trans.amount, 0);
+        
+        const expenses = monthlyTransactions
+            .filter(trans => trans.type === 'expense')
+            .reduce((sum, trans) => sum + trans.amount, 0);
+        
+        const savings = income - expenses;
+        const netBalance = income - expenses;
+        
+        doc.text(`Total Income: ${symbol}${income.toFixed(2)}`, 14, yPos);
+        yPos += 7;
+        doc.text(`Total Expenses: ${symbol}${expenses.toFixed(2)}`, 14, yPos);
+        yPos += 7;
+        doc.text(`Total Savings: ${symbol}${savings.toFixed(2)}`, 14, yPos);
+        yPos += 7;
+        doc.text(`Net Balance: ${symbol}${netBalance.toFixed(2)}`, 14, yPos);
+        yPos += 15;
+        
+        // Category Distribution
+        if (yPos > 250) {
+            doc.addPage();
+            yPos = 20;
+        }
+        
+        doc.setFontSize(14);
+        doc.text('Category Distribution', 14, yPos);
+        yPos += 10;
+        doc.setFontSize(11);
+        
+        const categorySpending = {};
+        monthlyTransactions
+            .filter(trans => trans.type === 'expense')
+            .forEach(trans => {
+                const catName = state.categories.find(c => c.id === trans.categoryId)?.name || trans.category;
+                categorySpending[catName] = (categorySpending[catName] || 0) + trans.amount;
+            });
+        
+        const totalCategorySpending = Object.values(categorySpending).reduce((a, b) => a + b, 0);
+        
+        Object.keys(categorySpending).sort((a, b) => categorySpending[b] - categorySpending[a]).forEach(cat => {
+            if (yPos > 280) {
+                doc.addPage();
+                yPos = 20;
+            }
+            const amount = categorySpending[cat];
+            const percentage = totalCategorySpending > 0 ? ((amount / totalCategorySpending) * 100).toFixed(1) : 0;
+            doc.text(`${cat}: ${symbol}${amount.toFixed(2)} (${percentage}%)`, 14, yPos);
+            yPos += 7;
+        });
+        yPos += 10;
+        
+        // Splitwise Summary
+        if (yPos > 250) {
+            doc.addPage();
+            yPos = 20;
+        }
+        
+        doc.setFontSize(14);
+        doc.text('Splitwise Summary', 14, yPos);
+        yPos += 10;
+        doc.setFontSize(11);
+        
+        const totalOwed = state.splitBills
+            .filter(bill => !bill.settled)
+            .reduce((sum, bill) => {
+                let owed = 0;
+                Object.keys(bill.splitDetails).forEach(participant => {
+                    if (bill.paymentStatus && bill.paymentStatus[participant] !== 'paid') {
+                        owed += bill.splitDetails[participant];
+                    } else if (!bill.paymentStatus) {
+                        owed += bill.splitDetails[participant];
+                    }
+                });
+                return sum + owed;
+            }, 0);
+        
+        const totalLent = state.splitBills
+            .filter(bill => !bill.settled && bill.paidBy === currentUser?.name)
+            .reduce((sum, bill) => {
+                let lent = 0;
+                Object.keys(bill.splitDetails).forEach(participant => {
+                    if (participant !== currentUser?.name) {
+                        lent += bill.splitDetails[participant];
+                    }
+                });
+                return sum + lent;
+            }, 0);
+        
+        doc.text(`Total Owed: ${symbol}${totalOwed.toFixed(2)}`, 14, yPos);
+        yPos += 7;
+        doc.text(`Total Lent: ${symbol}${totalLent.toFixed(2)}`, 14, yPos);
+        yPos += 15;
+        
+        // Savings Goals
+        if (yPos > 250) {
+            doc.addPage();
+            yPos = 20;
+        }
+        
+        doc.setFontSize(14);
+        doc.text('Savings Goal Progress', 14, yPos);
+        yPos += 10;
+        doc.setFontSize(11);
+        
+        state.goals.forEach(goal => {
+            if (yPos > 280) {
+                doc.addPage();
+                yPos = 20;
+            }
+            const percentage = goal.target > 0 ? ((goal.saved / goal.target) * 100).toFixed(1) : 0;
+            const remaining = goal.target - goal.saved;
+            doc.text(`${goal.name}:`, 14, yPos);
+            yPos += 7;
+            doc.text(`  Saved: ${symbol}${goal.saved.toFixed(2)} / ${symbol}${goal.target.toFixed(2)} (${percentage}%)`, 20, yPos);
+            yPos += 7;
+            doc.text(`  Remaining: ${symbol}${remaining.toFixed(2)}`, 20, yPos);
+            yPos += 10;
+        });
+        
+        // Save PDF
+        const fileName = `cashlog-statement-${currentMonth}-${currentYear}.pdf`;
+        doc.save(fileName);
+        showToast('PDF exported successfully!', 'success');
+        closeModal();
+    }
+    
+    // Export to CSV
+    function exportToCSV() {
+        const now = new Date();
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                          'July', 'August', 'September', 'October', 'November', 'December'];
+        const currentMonth = monthNames[now.getMonth()];
+        const currentYear = now.getFullYear();
+        
+        const symbol = getCurrencySymbol();
+        let csv = `CashLog Monthly Statement - ${currentMonth} ${currentYear}\n`;
+        csv += `Generated: ${new Date().toLocaleDateString()}\n\n`;
+        
+        // Summary
+        const monthlyTransactions = state.transactions.filter(trans => 
+            trans.date.getMonth() === now.getMonth() && 
+            trans.date.getFullYear() === now.getFullYear()
+        );
+        
+        const income = monthlyTransactions
+            .filter(trans => trans.type === 'income')
+            .reduce((sum, trans) => sum + trans.amount, 0);
+        
+        const expenses = monthlyTransactions
+            .filter(trans => trans.type === 'expense')
+            .reduce((sum, trans) => sum + trans.amount, 0);
+        
+        const savings = income - expenses;
+        const netBalance = income - expenses;
+        
+        csv += `SUMMARY\n`;
+        csv += `Total Income,${symbol}${income.toFixed(2)}\n`;
+        csv += `Total Expenses,${symbol}${expenses.toFixed(2)}\n`;
+        csv += `Total Savings,${symbol}${savings.toFixed(2)}\n`;
+        csv += `Net Balance,${symbol}${netBalance.toFixed(2)}\n\n`;
+        
+        // Category Distribution
+        csv += `CATEGORY DISTRIBUTION\n`;
+        csv += `Category,Amount,Percentage\n`;
+        
+        const categorySpending = {};
+        monthlyTransactions
+            .filter(trans => trans.type === 'expense')
+            .forEach(trans => {
+                const catName = state.categories.find(c => c.id === trans.categoryId)?.name || trans.category;
+                categorySpending[catName] = (categorySpending[catName] || 0) + trans.amount;
+            });
+        
+        const totalCategorySpending = Object.values(categorySpending).reduce((a, b) => a + b, 0);
+        
+        Object.keys(categorySpending).sort((a, b) => categorySpending[b] - categorySpending[a]).forEach(cat => {
+            const amount = categorySpending[cat];
+            const percentage = totalCategorySpending > 0 ? ((amount / totalCategorySpending) * 100).toFixed(1) : 0;
+            csv += `${cat},${symbol}${amount.toFixed(2)},${percentage}%\n`;
+        });
+        csv += `\n`;
+        
+        // Splitwise Summary
+        csv += `SPLITWISE SUMMARY\n`;
+        const totalOwed = state.splitBills
+            .filter(bill => !bill.settled)
+            .reduce((sum, bill) => {
+                let owed = 0;
+                Object.keys(bill.splitDetails).forEach(participant => {
+                    if (bill.paymentStatus && bill.paymentStatus[participant] !== 'paid') {
+                        owed += bill.splitDetails[participant];
+                    } else if (!bill.paymentStatus) {
+                        owed += bill.splitDetails[participant];
+                    }
+                });
+                return sum + owed;
+            }, 0);
+        
+        const totalLent = state.splitBills
+            .filter(bill => !bill.settled && bill.paidBy === currentUser?.name)
+            .reduce((sum, bill) => {
+                let lent = 0;
+                Object.keys(bill.splitDetails).forEach(participant => {
+                    if (participant !== currentUser?.name) {
+                        lent += bill.splitDetails[participant];
+                    }
+                });
+                return sum + lent;
+            }, 0);
+        
+        csv += `Total Owed,${symbol}${totalOwed.toFixed(2)}\n`;
+        csv += `Total Lent,${symbol}${totalLent.toFixed(2)}\n\n`;
+        
+        // Savings Goals
+        csv += `SAVINGS GOAL PROGRESS\n`;
+        csv += `Goal Name,Target Amount,Saved Amount,Remaining,Percentage\n`;
+        
+        state.goals.forEach(goal => {
+            const remaining = goal.target - goal.saved;
+            const percentage = goal.target > 0 ? ((goal.saved / goal.target) * 100).toFixed(1) : 0;
+            csv += `${goal.name},${symbol}${goal.target.toFixed(2)},${symbol}${goal.saved.toFixed(2)},${symbol}${remaining.toFixed(2)},${percentage}%\n`;
+        });
+        
+        // Download CSV
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `cashlog-statement-${currentMonth}-${currentYear}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showToast('CSV exported successfully!', 'success');
+        closeModal();
+    }
+    
+    // Share Data (if Web Share API is available)
+    async function shareData() {
+        const now = new Date();
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                          'July', 'August', 'September', 'October', 'November', 'December'];
+        const currentMonth = monthNames[now.getMonth()];
+        const currentYear = now.getFullYear();
+        
+        const symbol = getCurrencySymbol();
+        let text = `CashLog Monthly Statement - ${currentMonth} ${currentYear}\n\n`;
+        
+        const monthlyTransactions = state.transactions.filter(trans => 
+            trans.date.getMonth() === now.getMonth() && 
+            trans.date.getFullYear() === now.getFullYear()
+        );
+        
+        const income = monthlyTransactions
+            .filter(trans => trans.type === 'income')
+            .reduce((sum, trans) => sum + trans.amount, 0);
+        
+        const expenses = monthlyTransactions
+            .filter(trans => trans.type === 'expense')
+            .reduce((sum, trans) => sum + trans.amount, 0);
+        
+        text += `Total Income: ${symbol}${income.toFixed(2)}\n`;
+        text += `Total Expenses: ${symbol}${expenses.toFixed(2)}\n`;
+        text += `Net Balance: ${symbol}${(income - expenses).toFixed(2)}\n`;
+        
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: `CashLog Statement - ${currentMonth} ${currentYear}`,
+                    text: text
+                });
+                showToast('Data shared successfully!', 'success');
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    showToast('Error sharing data', 'error');
+                }
+            }
+        }
+    }
+    
+    // Expose functions globally
+    window.updateUserDisplay = updateUserDisplay;
+    window.renderBills = renderBills;
+    window.updateSummaryCards = updateSummaryCards;
+    window.renderRecentTransactions = renderRecentTransactions;
+    window.renderTransactionsTable = renderTransactionsTable;
+    window.renderCategories = renderCategories;
+    window.renderGoals = renderGoals;
 });
