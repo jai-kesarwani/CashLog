@@ -9,7 +9,7 @@ coverage/
 # Environment files
 .env
 .env.*
-!.env.example
+
 
 # Logs
 *.log
@@ -27,5 +27,3 @@ Thumbs.db
 .idea/
 *.swp
 
-# Backend
-backend/

@@ -38,6 +38,171 @@ document.addEventListener('DOMContentLoaded', function() {
         currentUser = JSON.parse(loggedInUser);
     }
 
+    // API Configuration
+    const API_BASE_URL = 'http://localhost:5000/api';
+
+    // API Helper Functions
+    async function apiCall(endpoint, options = {}) {
+        try {
+            const url = `${API_BASE_URL}${endpoint}`;
+            const response = await fetch(url, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                },
+                ...options
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'API request failed');
+            }
+
+            return data;
+        } catch (error) {
+            console.error('API Error:', error);
+            throw error;
+        }
+    }
+
+    // Transaction API Functions
+    async function fetchTransactions() {
+        try {
+            const userId = currentUser ? currentUser.id : null;
+            const queryParams = userId ? `?userId=${userId}` : '';
+            const response = await apiCall(`/transactions${queryParams}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching transactions:', error);
+            showToast('Error loading transactions', 'error');
+            return [];
+        }
+    }
+
+    async function createTransaction(transactionData) {
+        try {
+            const userId = currentUser ? currentUser.id : null;
+            const response = await apiCall('/transactions', {
+                method: 'POST',
+                body: JSON.stringify({ ...transactionData, userId })
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error creating transaction:', error);
+            showToast('Error adding transaction', 'error');
+            throw error;
+        }
+    }
+
+    async function updateTransaction(id, transactionData) {
+        try {
+            const response = await apiCall(`/transactions/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify(transactionData)
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error updating transaction:', error);
+            showToast('Error updating transaction', 'error');
+            throw error;
+        }
+    }
+
+    async function deleteTransactionAPI(id) {
+        try {
+            await apiCall(`/transactions/${id}`, {
+                method: 'DELETE'
+            });
+            return true;
+        } catch (error) {
+            console.error('Error deleting transaction:', error);
+            showToast('Error deleting transaction', 'error');
+            throw error;
+        }
+    }
+
+    async function fetchFinancialSummary() {
+        try {
+            const userId = currentUser ? currentUser.id : null;
+            const queryParams = userId ? `?userId=${userId}` : '';
+            const response = await apiCall(`/transactions/summary${queryParams}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching financial summary:', error);
+            return { totalIncome: 0, totalExpense: 0, balance: 0 };
+        }
+    }
+
+    // Split Bill API Functions
+    async function fetchSplitBills() {
+        try {
+            const userId = currentUser ? currentUser.id : null;
+            const queryParams = userId ? `?userId=${userId}` : '';
+            const response = await apiCall(`/split-bills${queryParams}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching split bills:', error);
+            showToast('Error loading split bills', 'error');
+            return [];
+        }
+    }
+
+    async function createSplitBill(billData) {
+        try {
+            const userId = currentUser ? currentUser.id : null;
+            const response = await apiCall('/split-bills', {
+                method: 'POST',
+                body: JSON.stringify({ ...billData, userId })
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error creating split bill:', error);
+            showToast('Error adding split bill', 'error');
+            throw error;
+        }
+    }
+
+    async function deleteSplitBill(id) {
+        try {
+            await apiCall(`/split-bills/${id}`, {
+                method: 'DELETE'
+            });
+            return true;
+        } catch (error) {
+            console.error('Error deleting split bill:', error);
+            showToast('Error deleting split bill', 'error');
+            throw error;
+        }
+    }
+
+    async function markSplitBillAsPaid(id, participant) {
+        try {
+            const response = await apiCall(`/split-bills/${id}/mark-paid`, {
+                method: 'PUT',
+                body: JSON.stringify({ participant })
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error marking as paid:', error);
+            showToast('Error updating split bill', 'error');
+            throw error;
+        }
+    }
+
+    async function settleSplitBill(id) {
+        try {
+            const response = await apiCall(`/split-bills/${id}/settle`, {
+                method: 'PUT'
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error settling split bill:', error);
+            showToast('Error settling split bill', 'error');
+            throw error;
+        }
+    }
+
     // Sidebar Logout button
     
     const logoutBtnSidebar = document.getElementById('logout-btn-sidebar');
@@ -73,9 +238,14 @@ if (logoutBtnSidebar) {
     
     function updateUserDisplay() {
         if (currentUser) {
-            document.getElementById('welcome-message').textContent = `Welcome, ${currentUser.name} 👋`;
-            document.getElementById('account-name').textContent = currentUser.name;
-            document.getElementById('account-email').textContent = currentUser.email;
+            const welcomeMessage = document.getElementById('welcome-message');
+            if (welcomeMessage) welcomeMessage.textContent = `Welcome, ${currentUser.name} 👋`;
+            
+            const accountName = document.getElementById('account-name');
+            if (accountName) accountName.textContent = currentUser.name;
+            
+            const accountEmail = document.getElementById('account-email');
+            if (accountEmail) accountEmail.textContent = currentUser.email;
         }
     }
     
@@ -128,49 +298,77 @@ if (logoutBtnSidebar) {
     }
     
     // Initialize the app
-    function init() {
+    async function init() {
         if (!currentUser) return;
-        loadData();
-        setupEventListeners();
-        renderCategories();
-        updateSummaryCards();
-        renderRecentTransactions();
-        renderTransactionsTable();
-        renderCharts();
-        renderBills();
-        setCurrentMonthYear();
-        updateUserDisplay();
         
-        // Listen for currency changes
-        window.addEventListener('currencyChanged', () => {
-            updateSummaryCards();
+        // Show loading state
+        showLoading();
+        
+        try {
+            await loadData();
+            setupEventListeners();
+            renderCategories();
+            await updateSummaryCards();
             renderRecentTransactions();
             renderTransactionsTable();
-            renderCategories();
-            renderGoals();
+            renderCharts();
             renderBills();
-        });
+            setCurrentMonthYear();
+            updateUserDisplay();
+            
+            // Listen for currency changes
+            window.addEventListener('currencyChanged', () => {
+                updateSummaryCards();
+                renderRecentTransactions();
+                renderTransactionsTable();
+                renderCategories();
+                renderGoals();
+                renderBills();
+            });
+        } catch (error) {
+            console.error('Error initializing app:', error);
+            showToast('Error loading data. Please refresh the page.', 'error');
+        } finally {
+            hideLoading();
+        }
     // end of init
     }
     
-    // Initialize on page load
-    init();
+    // Show loading state
+    function showLoading() {
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'flex';
+            loadingOverlay.style.pointerEvents = 'auto';
+        }
+    }
     
-    // Load data from localStorage
-    function loadData() {
+    // Hide loading state
+    function hideLoading() {
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'none';
+            loadingOverlay.style.pointerEvents = 'none';
+        }
+    }
+    
+    // Initialize on page load
+    init().catch(error => {
+        console.error('Fatal error during initialization:', error);
+        hideLoading(); // Ensure loading overlay is hidden even on fatal error
+        showToast('Error initializing app. Please refresh the page.', 'error');
+    });
+    
+    // Load data from localStorage and API
+    async function loadData() {
+        // Load categories and goals from localStorage (keep these local for now)
         const userId = currentUser ? currentUser.id : 'default';
         const savedState = localStorage.getItem(`budgetPlannerState_${userId}`);
         if (savedState) {
             const parsed = JSON.parse(savedState);
-            state.transactions = parsed.transactions || [];
             state.categories = parsed.categories || state.categories;
             state.goals = parsed.goals || [];
-            state.splitBills = parsed.splitBills || [];
             
-            // Convert date strings back to Date objects for transactions
-            state.transactions.forEach(trans => {
-                trans.date = new Date(trans.date);
-            });
             // Convert date strings back to Date objects for goals
             state.goals.forEach(goal => {
                 goal.date = new Date(goal.date);
@@ -179,45 +377,55 @@ if (logoutBtnSidebar) {
                     h.date = new Date(h.date);
                 });
             });
-            // Convert date strings back to Date objects for split bills
-            state.splitBills.forEach(bill => {
-                if (bill.createdAt && typeof bill.createdAt === 'string') {
-                    bill.createdAt = new Date(bill.createdAt);
-                }
-            });
+        }
+
+        // Load transactions from API
+        try {
+            const transactions = await fetchTransactions();
+            state.transactions = transactions.map(trans => ({
+                ...trans,
+                date: new Date(trans.date),
+                id: trans._id || trans.id // Handle both _id from MongoDB and id
+            }));
+        } catch (error) {
+            console.error('Failed to load transactions from API:', error);
+            state.transactions = [];
+        }
+
+        // Load split bills from API
+        try {
+            const splitBills = await fetchSplitBills();
+            state.splitBills = splitBills.map(bill => ({
+                ...bill,
+                id: bill._id || bill.id, // Handle both _id from MongoDB and id
+                splitDetails: bill.splitData || bill.splitDetails, // Map splitData to splitDetails
+                paymentStatus: bill.paymentStatus || {}
+            }));
+        } catch (error) {
+            console.error('Failed to load split bills from API:', error);
+            state.splitBills = [];
         }
     }
     
-    // Save data to localStorage
+    // Save data to localStorage (only categories and goals - transactions and split bills are now in MongoDB)
     function saveData() {
         if (!currentUser) return;
         const userId = currentUser.id;
         
         // Convert Date objects to strings for serialization
-        const transactionsWithStringDates = state.transactions.map(trans => ({
-            ...trans,
-            date: trans.date.toISOString()
-        }));
-        
         const goalsWithStringDates = state.goals.map(goal => ({
             ...goal,
             date: goal.date.toISOString(),
-            history: goal.history ? goal.history.map(h => ({
+            history: goal.history.map(h => ({
                 ...h,
                 date: h.date.toISOString()
-            })) : []
-        }));
-        
-        const splitBillsWithStringDates = state.splitBills.map(bill => ({
-            ...bill,
-            createdAt: bill.createdAt instanceof Date ? bill.createdAt.toISOString() : bill.createdAt
+            }))
         }));
         
         const stateToSave = {
-            transactions: transactionsWithStringDates,
             categories: state.categories,
-            goals: goalsWithStringDates,
-            splitBills: splitBillsWithStringDates
+            goals: goalsWithStringDates
+            // Note: transactions and splitBills are NOT saved here anymore - they're in MongoDB
         };
         
         localStorage.setItem(`budgetPlannerState_${userId}`, JSON.stringify(stateToSave));
@@ -236,7 +444,8 @@ if (logoutBtnSidebar) {
                 
                 const section = item.getAttribute('data-section');
                 contentSections.forEach(sec => sec.classList.remove('active'));
-                document.getElementById(section).classList.add('active');
+                const sectionElement = document.getElementById(section);
+                if (sectionElement) sectionElement.classList.add('active');
                 
                 // Render specific content when section changes
                 if (section === 'transactions') {
@@ -289,32 +498,47 @@ if (logoutBtnSidebar) {
         if (emailPdfBtn) emailPdfBtn.addEventListener('click', handleEmailPDF);
         
         // Report period navigation
-        document.getElementById('prev-month').addEventListener('click', () => {
-            if (state.currentMonth === 0) {
-                state.currentMonth = 11;
-                state.currentYear--;
-            } else {
-                state.currentMonth--;
-            }
-            setCurrentMonthYear();
-            renderCharts();
-        });
+        const prevMonthBtn = document.getElementById('prev-month');
+        if (prevMonthBtn) {
+            prevMonthBtn.addEventListener('click', () => {
+                if (state.currentMonth === 0) {
+                    state.currentMonth = 11;
+                    state.currentYear--;
+                } else {
+                    state.currentMonth--;
+                }
+                setCurrentMonthYear();
+                renderCharts();
+            });
+        }
         
-        document.getElementById('next-month').addEventListener('click', () => {
-            if (state.currentMonth === 11) {
-                state.currentMonth = 0;
-                state.currentYear++;
-            } else {
-                state.currentMonth++;
-            }
-            setCurrentMonthYear();
-            renderCharts();
-        });
+        const nextMonthBtn = document.getElementById('next-month');
+        if (nextMonthBtn) {
+            nextMonthBtn.addEventListener('click', () => {
+                if (state.currentMonth === 11) {
+                    state.currentMonth = 0;
+                    state.currentYear++;
+                } else {
+                    state.currentMonth++;
+                }
+                setCurrentMonthYear();
+                renderCharts();
+            });
+        }
         
         // Filter changes
-        document.getElementById('transaction-type').addEventListener('change', renderTransactionsTable);
-        document.getElementById('transaction-category').addEventListener('change', renderTransactionsTable);
-        document.getElementById('transaction-month').addEventListener('change', renderTransactionsTable);
+        const transactionTypeSelect = document.getElementById('transaction-type');
+        if (transactionTypeSelect) {
+            transactionTypeSelect.addEventListener('change', renderTransactionsTable);
+        }
+        const transactionCategorySelect = document.getElementById('transaction-category');
+        if (transactionCategorySelect) {
+            transactionCategorySelect.addEventListener('change', renderTransactionsTable);
+        }
+        const transactionMonthSelect = document.getElementById('transaction-month');
+        if (transactionMonthSelect) {
+            transactionMonthSelect.addEventListener('change', renderTransactionsTable);
+        }
     }
     
     // Toggle between light and dark theme
@@ -374,25 +598,33 @@ if (logoutBtnSidebar) {
     function prepareTransactionModal() {
         // Set today's date as default
         const today = new Date().toISOString().split('T')[0];
-        document.getElementById('trans-date').value = today;
+        const transDateEl = document.getElementById('trans-date');
+        if (transDateEl) transDateEl.value = today;
         
         // Populate category dropdown
         const categorySelect = document.getElementById('trans-category');
-        categorySelect.innerHTML = '';
-        
-        state.categories.forEach(category => {
-            const option = document.createElement('option');
-            option.value = category.id;
-            option.textContent = category.name;
-            categorySelect.appendChild(option);
-        });
+        if (categorySelect) {
+            categorySelect.innerHTML = '';
+            
+            state.categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = category.name;
+                categorySelect.appendChild(option);
+            });
+        }
     }
     
     // Prepare category modal
     function prepareCategoryModal() {
-        document.getElementById('category-name').value = '';
-        document.getElementById('category-budget').value = '';
-        document.getElementById('category-icon').value = 'fa-utensils';
+        const categoryNameEl = document.getElementById('category-name');
+        if (categoryNameEl) categoryNameEl.value = '';
+        
+        const categoryBudgetEl = document.getElementById('category-budget');
+        if (categoryBudgetEl) categoryBudgetEl.value = '';
+        
+        const categoryIconEl = document.getElementById('category-icon');
+        if (categoryIconEl) categoryIconEl.value = 'fa-utensils';
     }
     
     // Prepare goal modal
@@ -401,56 +633,92 @@ if (logoutBtnSidebar) {
         const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
         const nextMonthFormatted = nextMonth.toISOString().split('T')[0];
         
-        document.getElementById('goal-name').value = '';
-        document.getElementById('goal-target').value = '';
-        document.getElementById('goal-saved').value = '0';
-        document.getElementById('goal-date').value = nextMonthFormatted;
+        const goalNameEl = document.getElementById('goal-name');
+        if (goalNameEl) goalNameEl.value = '';
+        
+        const goalTargetEl = document.getElementById('goal-target');
+        if (goalTargetEl) goalTargetEl.value = '';
+        
+        const goalSavedEl = document.getElementById('goal-saved');
+        if (goalSavedEl) goalSavedEl.value = '0';
+        
+        const goalDateEl = document.getElementById('goal-date');
+        if (goalDateEl) goalDateEl.value = nextMonthFormatted;
     }
     
     // Handle transaction form submission
-    function handleTransactionSubmit(e) {
+    async function handleTransactionSubmit(e) {
         e.preventDefault();
         
-        const type = document.getElementById('trans-type').value;
-        const amount = parseFloat(document.getElementById('trans-amount').value);
-        const description = document.getElementById('trans-description').value;
-        const categoryId = parseInt(document.getElementById('trans-category').value);
-        const date = new Date(document.getElementById('trans-date').value);
+        const typeEl = document.getElementById('trans-type');
+        const amountEl = document.getElementById('trans-amount');
+        const descriptionEl = document.getElementById('trans-description');
+        const categoryIdEl = document.getElementById('trans-category');
+        const dateEl = document.getElementById('trans-date');
+        
+        if (!typeEl || !amountEl || !descriptionEl || !categoryIdEl || !dateEl) {
+            showToast('Error: Form elements not found', 'error');
+            return;
+        }
+        
+        const type = typeEl.value;
+        const amount = parseFloat(amountEl.value);
+        const description = descriptionEl.value;
+        const categoryId = parseInt(categoryIdEl.value);
+        const date = new Date(dateEl.value);
         
         const category = state.categories.find(cat => cat.id === categoryId);
         
-        const newTransaction = {
-            id: Date.now(),
-            type,
+        const transactionData = {
+            title: description,
             amount,
-            description,
             category: category.name,
+            type,
+            date: date.toISOString(),
             categoryId,
-            date,
             icon: category.icon
         };
         
-        state.transactions.push(newTransaction);
-        saveData();
-        
-        // Update UI
-        closeModal();
-        updateSummaryCards();
-        renderRecentTransactions();
-        renderTransactionsTable();
-        renderCharts();
-        
-        // Reset form
-        transactionForm.reset();
+        try {
+            const savedTransaction = await createTransaction(transactionData);
+            
+            // Add to local state
+            state.transactions.push({
+                ...savedTransaction,
+                date: new Date(savedTransaction.date),
+                id: savedTransaction._id || savedTransaction.id
+            });
+            
+            closeModal();
+            updateSummaryCards();
+            renderRecentTransactions();
+            renderTransactionsTable();
+            renderCharts();
+            renderCategories();
+            if (transactionForm) transactionForm.reset();
+            showToast('Transaction added successfully!', 'success');
+        } catch (error) {
+            console.error('Error adding transaction:', error);
+            showToast('Failed to add transaction', 'error');
+        }
     }
     
     // Handle category form submission
     function handleCategorySubmit(e) {
         e.preventDefault();
         
-        const name = document.getElementById('category-name').value;
-        const budget = parseFloat(document.getElementById('category-budget').value);
-        const icon = document.getElementById('category-icon').value;
+        const categoryNameEl = document.getElementById('category-name');
+        const categoryBudgetEl = document.getElementById('category-budget');
+        const categoryIconEl = document.getElementById('category-icon');
+        
+        if (!categoryNameEl || !categoryBudgetEl || !categoryIconEl) {
+            showToast('Error: Form elements not found', 'error');
+            return;
+        }
+        
+        const name = categoryNameEl.value;
+        const budget = parseFloat(categoryBudgetEl.value);
+        const icon = categoryIconEl.value;
         
         // Generate a random color for the category
         const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#00CC99', '#FF9F40', '#8A2BE2'];
@@ -473,17 +741,27 @@ if (logoutBtnSidebar) {
         renderCharts();
         
         // Reset form
-        categoryForm.reset();
+        if (categoryForm) categoryForm.reset();
     }
     
     // Handle goal form submission
     function handleGoalSubmit(e) {
         e.preventDefault();
         
-        const name = document.getElementById('goal-name').value;
-        const target = parseFloat(document.getElementById('goal-target').value);
-        const saved = parseFloat(document.getElementById('goal-saved').value);
-        const date = new Date(document.getElementById('goal-date').value);
+        const goalNameEl = document.getElementById('goal-name');
+        const goalTargetEl = document.getElementById('goal-target');
+        const goalSavedEl = document.getElementById('goal-saved');
+        const goalDateEl = document.getElementById('goal-date');
+        
+        if (!goalNameEl || !goalTargetEl || !goalSavedEl || !goalDateEl) {
+            showToast('Error: Form elements not found', 'error');
+            return;
+        }
+        
+        const name = goalNameEl.value;
+        const target = parseFloat(goalTargetEl.value);
+        const saved = parseFloat(goalSavedEl.value);
+        const date = new Date(goalDateEl.value);
         
         const newGoal = {
             id: Date.now(),
@@ -510,14 +788,20 @@ if (logoutBtnSidebar) {
         renderGoals();
         
         // Reset form
-        goalForm.reset();
+        if (goalForm) goalForm.reset();
     }
     
     // Handle goal update form submission
     function handleGoalUpdateSubmit(e) {
         e.preventDefault();
         
-        const amount = parseFloat(document.getElementById('goal-update-amount').value);
+        const goalUpdateAmountEl = document.getElementById('goal-update-amount');
+        if (!goalUpdateAmountEl) {
+            showToast('Error: Form element not found', 'error');
+            return;
+        }
+        
+        const amount = parseFloat(goalUpdateAmountEl.value);
         const goal = state.goals.find(g => g.id === currentGoalId);
         
         if (!goal) return;
@@ -539,12 +823,51 @@ if (logoutBtnSidebar) {
         renderGoals();
         
         // Reset form
-        goalUpdateForm.reset();
+        if (goalUpdateForm) goalUpdateForm.reset();
         currentGoalId = null;
     }
     
     // Update summary cards
-    function updateSummaryCards() {
+    async function updateSummaryCards() {
+        try {
+            const summary = await fetchFinancialSummary();
+            const { totalIncome, totalExpense, balance } = summary;
+            
+            const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpense) / totalIncome * 100).toFixed(1) : 0;
+            
+            // Update DOM with currency formatting
+            const totalBalanceEl = document.getElementById('total-balance');
+            if (totalBalanceEl) totalBalanceEl.textContent = formatCurrencyAmount(balance);
+            
+            const monthlyIncomeEl = document.getElementById('monthly-income');
+            if (monthlyIncomeEl) monthlyIncomeEl.textContent = formatCurrencyAmount(totalIncome);
+            
+            const monthlyExpensesEl = document.getElementById('monthly-expenses');
+            if (monthlyExpensesEl) monthlyExpensesEl.textContent = formatCurrencyAmount(totalExpense);
+            
+            const savingsRateEl = document.getElementById('savings-rate');
+            if (savingsRateEl) savingsRateEl.textContent = `${savingsRate}%`;
+            
+            // Update change indicator
+            const changeElement = document.querySelector('#total-balance + .change');
+            if (balance > 0) {
+                changeElement.classList.add('positive');
+                changeElement.classList.remove('negative');
+            } else if (balance < 0) {
+                changeElement.classList.add('negative');
+                changeElement.classList.remove('positive');
+            } else {
+                changeElement.classList.remove('positive', 'negative');
+            }
+        } catch (error) {
+            console.error('Error updating summary cards:', error);
+            // Fallback to local state calculation if API fails
+            fallbackUpdateSummaryCards();
+        }
+    }
+    
+    // Fallback to local state calculation
+    function fallbackUpdateSummaryCards() {
         const now = new Date();
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
@@ -567,11 +890,17 @@ if (logoutBtnSidebar) {
         const savingsRate = income > 0 ? ((income - expenses) / income * 100).toFixed(1) : 0;
         
         // Update DOM with currency formatting
-        const symbol = getCurrencySymbol();
-        document.getElementById('total-balance').textContent = formatCurrencyAmount(balance);
-        document.getElementById('monthly-income').textContent = formatCurrencyAmount(income);
-        document.getElementById('monthly-expenses').textContent = formatCurrencyAmount(expenses);
-        document.getElementById('savings-rate').textContent = `${savingsRate}%`;
+        const totalBalanceEl = document.getElementById('total-balance');
+        if (totalBalanceEl) totalBalanceEl.textContent = formatCurrencyAmount(balance);
+        
+        const monthlyIncomeEl = document.getElementById('monthly-income');
+        if (monthlyIncomeEl) monthlyIncomeEl.textContent = formatCurrencyAmount(income);
+        
+        const monthlyExpensesEl = document.getElementById('monthly-expenses');
+        if (monthlyExpensesEl) monthlyExpensesEl.textContent = formatCurrencyAmount(expenses);
+        
+        const savingsRateEl = document.getElementById('savings-rate');
+        if (savingsRateEl) savingsRateEl.textContent = `${savingsRate}%`;
         
         // Update change indicator
         const changeElement = document.querySelector('#total-balance + .change');
@@ -589,6 +918,8 @@ if (logoutBtnSidebar) {
     // Render recent transactions
     function renderRecentTransactions() {
         const container = document.getElementById('recent-transactions');
+        if (!container) return;
+        
         container.innerHTML = '';
         
         // Get 5 most recent transactions
@@ -613,7 +944,7 @@ if (logoutBtnSidebar) {
                         <i class="fas ${trans.icon || 'fa-money-bill-wave'}"></i>
                     </div>
                     <div class="transaction-details">
-                        <h4>${trans.description}</h4>
+                        <h4>${trans.title || trans.description}</h4>
                         <p>${category?.name || trans.category} • ${formatDate(trans.date)}</p>
                     </div>
                 </div>
@@ -629,15 +960,21 @@ if (logoutBtnSidebar) {
     // Render transactions table
     function renderTransactionsTable() {
         const container = document.getElementById('transactions-list');
+        const typeFilterEl = document.getElementById('transaction-type');
+        const categoryFilterEl = document.getElementById('transaction-category');
+        const monthFilterEl = document.getElementById('transaction-month');
+        
+        if (!container) return;
+        
         container.innerHTML = '';
         
-        const typeFilter = document.getElementById('transaction-type').value;
-        const categoryFilter = document.getElementById('transaction-category').value;
-        const monthFilter = document.getElementById('transaction-month').value;
+        const typeFilter = typeFilterEl ? typeFilterEl.value : 'all';
+        const categoryFilter = categoryFilterEl ? categoryFilterEl.value : 'all';
+        const monthFilter = monthFilterEl ? monthFilterEl.value : 'all';
         
         // Populate category filter
         const categorySelect = document.getElementById('transaction-category');
-        if (categorySelect.options.length <= 1) { // Only "All Categories" option
+        if (categorySelect && categorySelect.options.length <= 1) { // Only "All Categories" option
             state.categories.forEach(category => {
                 const option = document.createElement('option');
                 option.value = category.id;
@@ -648,7 +985,7 @@ if (logoutBtnSidebar) {
         
         // Populate month filter
         const monthSelect = document.getElementById('transaction-month');
-        if (monthSelect.options.length <= 1) { // Only "All Months" option
+        if (monthSelect && monthSelect.options.length <= 1) { // Only "All Months" option
             const months = [];
             state.transactions.forEach(trans => {
                 const monthYear = `${trans.date.getFullYear()}-${trans.date.getMonth()}`;
@@ -700,7 +1037,7 @@ if (logoutBtnSidebar) {
             
             row.innerHTML = `
                 <td>${formatDate(trans.date)}</td>
-                <td>${trans.description}</td>
+                <td>${trans.title || trans.description}</td>
                 <td>
                     <i class="fas ${trans.icon || 'fa-money-bill-wave'}"></i>
                     ${category?.name || trans.category}
@@ -727,93 +1064,158 @@ if (logoutBtnSidebar) {
         });
         
         // Add event listeners to action buttons
-        document.querySelectorAll('.edit-btn').forEach(btn => {
+        container.querySelectorAll('.edit-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const id = parseInt(btn.getAttribute('data-id'));
-                editTransaction(id);
+                e.preventDefault();
+                e.stopPropagation();
+                const id = btn.getAttribute('data-id');
+                if (id) {
+                    console.log('Edit button clicked, ID:', id);
+                    editTransaction(id);
+                }
             });
         });
-        document.querySelectorAll('.delete-btn').forEach(btn => {
+        container.querySelectorAll('.delete-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const id = parseInt(btn.getAttribute('data-id'));
-                deleteTransaction(id);
+                e.preventDefault();
+                e.stopPropagation();
+                const id = btn.getAttribute('data-id');
+                if (id) {
+                    deleteTransaction(id);
+                }
             });
         });
     }
     
     // Edit transaction
-    function editTransaction(id) {
-        const transaction = state.transactions.find(trans => trans.id === id);
-        if (!transaction) return;
+    async function editTransaction(id) {
+        console.log('Edit transaction called with ID:', id);
+        const transaction = state.transactions.find(trans => trans.id === id || trans._id === id);
+        if (!transaction) {
+            console.error('Transaction not found in state:', id);
+            return;
+        }
+        
+        console.log('Transaction found:', transaction);
+        
+        // Store the editing transaction ID
+        window.editingTransactionId = id;
         
         openModal('transaction');
         
         // Fill form with transaction data
-        document.getElementById('trans-type').value = transaction.type;
-        document.getElementById('trans-amount').value = transaction.amount;
-        document.getElementById('trans-description').value = transaction.description;
-        document.getElementById('trans-category').value = transaction.categoryId;
-        document.getElementById('trans-date').value = transaction.date.toISOString().split('T')[0];
+        const transTypeEl = document.getElementById('trans-type');
+        const transAmountEl = document.getElementById('trans-amount');
+        const transDescriptionEl = document.getElementById('trans-description');
+        const transCategoryEl = document.getElementById('trans-category');
+        const transDateEl = document.getElementById('trans-date');
+        
+        if (transTypeEl) transTypeEl.value = transaction.type;
+        if (transAmountEl) transAmountEl.value = transaction.amount;
+        if (transDescriptionEl) transDescriptionEl.value = transaction.title || transaction.description;
+        if (transCategoryEl) transCategoryEl.value = transaction.categoryId;
+        if (transDateEl) transDateEl.value = transaction.date.toISOString().split('T')[0];
         
         // Modify form submission to handle edit
-        transactionForm.removeEventListener('submit', handleTransactionSubmit);
-        transactionForm.addEventListener('submit', function handleEditSubmit(e) {
-            e.preventDefault();
-            
-            // Update transaction
-            transaction.type = document.getElementById('trans-type').value;
-            transaction.amount = parseFloat(document.getElementById('trans-amount').value);
-            transaction.description = document.getElementById('trans-description').value;
-            transaction.categoryId = parseInt(document.getElementById('trans-category').value);
-            transaction.date = new Date(document.getElementById('trans-date').value);
-            
-            const category = state.categories.find(cat => cat.id === transaction.categoryId);
-            if (category) {
-                transaction.category = category.name;
-                transaction.icon = category.icon;
-            }
-            
-            saveData();
-            
-            // Update UI
-            closeModal();
-            updateSummaryCards();
-            renderRecentTransactions();
-            renderTransactionsTable();
-            renderCharts();
-            
-            // Reset form and event listener
-            transactionForm.reset();
-            transactionForm.removeEventListener('submit', handleEditSubmit);
-            transactionForm.addEventListener('submit', handleTransactionSubmit);
-        });
+        if (transactionForm) {
+            transactionForm.removeEventListener('submit', handleTransactionSubmit);
+            transactionForm.addEventListener('submit', async function handleEditSubmit(e) {
+                e.preventDefault();
+                
+                // Get form values
+                const typeEl = document.getElementById('trans-type');
+                const amountEl = document.getElementById('trans-amount');
+                const descriptionEl = document.getElementById('trans-description');
+                const categoryIdEl = document.getElementById('trans-category');
+                const dateEl = document.getElementById('trans-date');
+                
+                if (!typeEl || !amountEl || !descriptionEl || !categoryIdEl || !dateEl) {
+                    showToast('Error: Form elements not found', 'error');
+                    return;
+                }
+                
+                const category = state.categories.find(cat => cat.id === parseInt(categoryIdEl.value));
+                
+                const transactionData = {
+                    title: descriptionEl.value,
+                    amount: parseFloat(amountEl.value),
+                    category: category ? category.name : transaction.category,
+                    type: typeEl.value,
+                    date: new Date(dateEl.value).toISOString(),
+                    categoryId: parseInt(categoryIdEl.value),
+                    icon: category ? category.icon : transaction.icon
+                };
+                
+                try {
+                    console.log('Updating transaction:', id, transactionData);
+                    // Update transaction via API
+                    const updatedTransaction = await updateTransaction(id, transactionData);
+                    console.log('Update result:', updatedTransaction);
+                    
+                    // Update local state
+                    const index = state.transactions.findIndex(t => t.id === id || t._id === id);
+                    if (index !== -1) {
+                        state.transactions[index] = {
+                            ...updatedTransaction,
+                            date: new Date(updatedTransaction.date),
+                            id: updatedTransaction._id || updatedTransaction.id
+                        };
+                    }
+                    
+                    // Update UI
+                    closeModal();
+                    window.editingTransactionId = null;
+                    updateSummaryCards();
+                    renderRecentTransactions();
+                    renderTransactionsTable();
+                    renderCharts();
+                    renderCategories();
+                    showToast('Transaction updated successfully!', 'success');
+                } catch (error) {
+                    console.error('Error updating transaction:', error);
+                    showToast('Failed to update transaction', 'error');
+                }
+                
+                // Reset form and event listener
+                if (transactionForm) {
+                    transactionForm.reset();
+                    transactionForm.removeEventListener('submit', handleEditSubmit);
+                    transactionForm.addEventListener('submit', handleTransactionSubmit);
+                }
+            });
+        }
     }
     
     // Delete transaction
-    function deleteTransaction(id) {
+    async function deleteTransaction(id) {
         if (confirm('Are you sure you want to delete this transaction?')) {
-            state.transactions = state.transactions.filter(trans => trans.id !== id);
-            saveData();
-            
-            // Update UI
-            updateSummaryCards();
-            renderRecentTransactions();
-            renderTransactionsTable();
-            renderCharts();
+            try {
+                await deleteTransactionAPI(id);
+                
+                // Remove from local state
+                state.transactions = state.transactions.filter(trans => trans.id !== id);
+                
+                // Update UI
+                updateSummaryCards();
+                renderRecentTransactions();
+                renderTransactionsTable();
+                renderCharts();
+                renderCategories();
+                showToast('Transaction deleted successfully!', 'success');
+            } catch (error) {
+                console.error('Error deleting transaction:', error);
+                showToast('Failed to delete transaction', 'error');
+            }
         }
     }
     
-    // Render budget categories
+    // Render categories
     function renderCategories() {
         const container = document.getElementById('budget-categories');
+        if (!container) return;
+        
         container.innerHTML = '';
         
-        if (state.categories.length === 0) {
-            container.innerHTML = '<p class="no-categories">No categories yet. Add your first category!</p>';
-            return;
-        }
-        
-        // Calculate spent amounts per category
         const now = new Date();
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
@@ -863,7 +1265,7 @@ if (logoutBtnSidebar) {
             container.appendChild(categoryEl);
         });
 
-        document.querySelectorAll('.edit-budget-btn').forEach(button => {
+        container.querySelectorAll('.edit-budget-btn').forEach(button => {
             button.addEventListener('click', (e) => {
                 const categoryId = parseInt(e.target.dataset.id);
                 editBudget(categoryId);
@@ -894,6 +1296,8 @@ if (logoutBtnSidebar) {
     // Render savings goals
     function renderGoals() {
         const container = document.getElementById('savings-goals');
+        if (!container) return;
+        
         container.innerHTML = '';
         
         if (state.goals.length === 0) {
@@ -944,14 +1348,14 @@ if (logoutBtnSidebar) {
         });
 
         // Add event listeners for new buttons
-        document.querySelectorAll('.goal-update-btn').forEach(btn => {
+        container.querySelectorAll('.goal-update-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const id = parseInt(e.currentTarget.getAttribute('data-id'));
                 updateSavedAmount(id);
             });
         });
         
-        document.querySelectorAll('.goal-delete-btn').forEach(btn => {
+        container.querySelectorAll('.goal-delete-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const id = parseInt(e.currentTarget.getAttribute('data-id'));
                 deleteGoal(id);
@@ -1322,7 +1726,7 @@ if (logoutBtnSidebar) {
         sortedExpenses.forEach(trans => {
             const li = document.createElement('li');
             li.innerHTML = `
-                <span>${trans.description}</span>
+                <span>${trans.title || trans.description}</span>
                 <span>₹${trans.amount.toFixed(2)}</span>
             `;
             container.appendChild(li);
@@ -1383,7 +1787,8 @@ if (logoutBtnSidebar) {
     // Set current month/year for reports
     function setCurrentMonthYear() {
         const monthName = getMonthName(state.currentMonth);
-        document.getElementById('current-month').textContent = `${monthName} ${state.currentYear}`;
+        const currentMonthEl = document.getElementById('current-month');
+        if (currentMonthEl) currentMonthEl.textContent = `${monthName} ${state.currentYear}`;
     }
     
     // Helper function to format date
@@ -1406,52 +1811,64 @@ if (logoutBtnSidebar) {
     
     // Prepare bill modal
     function prepareBillModal() {
-        document.getElementById('bill-name').value = '';
-        document.getElementById('bill-amount').value = '';
-        document.getElementById('bill-split-type').value = 'equal';
-        document.getElementById('bill-participants').value = '';
-        document.getElementById('unequal-split-container').style.display = 'none';
-        document.getElementById('equal-split-preview').style.display = 'block';
-        document.getElementById('participant-amounts').innerHTML = '';
-        document.getElementById('split-validation-message').style.display = 'none';
+        const billNameEl = document.getElementById('bill-name');
+        const billAmountEl = document.getElementById('bill-amount');
+        const billSplitTypeEl = document.getElementById('bill-split-type');
+        const billParticipantsEl = document.getElementById('bill-participants');
+        const unequalSplitContainerEl = document.getElementById('unequal-split-container');
+        const equalSplitPreviewEl = document.getElementById('equal-split-preview');
+        const participantAmountsEl = document.getElementById('participant-amounts');
+        const splitValidationMessageEl = document.getElementById('split-validation-message');
+        const btnSplitEqualEl = document.getElementById('btn-split-equal');
+        const btnSplitUnequalEl = document.getElementById('btn-split-unequal');
+        
+        if (!billNameEl || !billAmountEl || !billSplitTypeEl || !billParticipantsEl || 
+            !unequalSplitContainerEl || !equalSplitPreviewEl || !participantAmountsEl ||
+            !splitValidationMessageEl || !btnSplitEqualEl || !btnSplitUnequalEl) {
+            console.error('prepareBillModal: Required elements not found');
+            return;
+        }
+        
+        billNameEl.value = '';
+        billAmountEl.value = '';
+        billSplitTypeEl.value = 'equal';
+        billParticipantsEl.value = '';
+        unequalSplitContainerEl.style.display = 'none';
+        equalSplitPreviewEl.style.display = 'block';
+        participantAmountsEl.innerHTML = '';
+        splitValidationMessageEl.style.display = 'none';
         
         // Reset split buttons
-        document.getElementById('btn-split-equal').classList.add('active');
-        document.getElementById('btn-split-unequal').classList.remove('active');
-        
-        // Add event listeners for split buttons
-        const btnSplitEqual = document.getElementById('btn-split-equal');
-        const btnSplitUnequal = document.getElementById('btn-split-unequal');
-        const billAmount = document.getElementById('bill-amount');
-        const billParticipants = document.getElementById('bill-participants');
+        btnSplitEqualEl.classList.add('active');
+        btnSplitUnequalEl.classList.remove('active');
         
         // Remove existing listeners to avoid duplicates
-        const newBtnSplitEqual = btnSplitEqual.cloneNode(true);
-        const newBtnSplitUnequal = btnSplitUnequal.cloneNode(true);
-        btnSplitEqual.parentNode.replaceChild(newBtnSplitEqual, btnSplitEqual);
-        btnSplitUnequal.parentNode.replaceChild(newBtnSplitUnequal, btnSplitUnequal);
+        const newBtnSplitEqual = btnSplitEqualEl.cloneNode(true);
+        const newBtnSplitUnequal = btnSplitUnequalEl.cloneNode(true);
+        btnSplitEqualEl.parentNode.replaceChild(newBtnSplitEqual, btnSplitEqualEl);
+        btnSplitUnequalEl.parentNode.replaceChild(newBtnSplitUnequal, btnSplitUnequalEl);
         
         newBtnSplitEqual.addEventListener('click', () => {
-            document.getElementById('bill-split-type').value = 'equal';
+            billSplitTypeEl.value = 'equal';
             newBtnSplitEqual.classList.add('active');
             newBtnSplitUnequal.classList.remove('active');
-            document.getElementById('unequal-split-container').style.display = 'none';
-            document.getElementById('equal-split-preview').style.display = 'block';
+            unequalSplitContainerEl.style.display = 'none';
+            equalSplitPreviewEl.style.display = 'block';
             updateEqualSplitPreview();
         });
         
         newBtnSplitUnequal.addEventListener('click', () => {
-            document.getElementById('bill-split-type').value = 'unequal';
+            billSplitTypeEl.value = 'unequal';
             newBtnSplitUnequal.classList.add('active');
             newBtnSplitEqual.classList.remove('active');
-            document.getElementById('equal-split-preview').style.display = 'none';
+            equalSplitPreviewEl.style.display = 'none';
             handleSplitTypeChange();
         });
         
         // Update preview on amount or participants change
-        billAmount.addEventListener('input', updateEqualSplitPreview);
-        billParticipants.addEventListener('input', () => {
-            if (document.getElementById('bill-split-type').value === 'equal') {
+        billAmountEl.addEventListener('input', updateEqualSplitPreview);
+        billParticipantsEl.addEventListener('input', () => {
+            if (billSplitTypeEl.value === 'equal') {
                 updateEqualSplitPreview();
             } else {
                 handleSplitTypeChange();
@@ -1461,8 +1878,16 @@ if (logoutBtnSidebar) {
     
     // Update equal split preview
     function updateEqualSplitPreview() {
-        const totalAmount = parseFloat(document.getElementById('bill-amount').value) || 0;
-        const participantsStr = document.getElementById('bill-participants').value.trim();
+        const billAmountEl = document.getElementById('bill-amount');
+        const billParticipantsEl = document.getElementById('bill-participants');
+        const previewContainer = document.getElementById('equal-split-details');
+        
+        if (!billAmountEl || !billParticipantsEl || !previewContainer) {
+            return;
+        }
+        
+        const totalAmount = parseFloat(billAmountEl.value) || 0;
+        const participantsStr = billParticipantsEl.value.trim();
         const friends = participantsStr.split(',').map(p => p.trim()).filter(p => p);
         
         if (!currentUser) return;
@@ -1472,7 +1897,6 @@ if (logoutBtnSidebar) {
         const totalPeople = allParticipants.length;
         const amountPerPerson = totalPeople > 0 ? totalAmount / totalPeople : 0;
         
-        const previewContainer = document.getElementById('equal-split-details');
         if (totalAmount > 0 && totalPeople > 0) {
             let previewHTML = '<table>';
             allParticipants.forEach(participant => {
@@ -1497,8 +1921,17 @@ if (logoutBtnSidebar) {
     
     // Handle split type change
     function handleSplitTypeChange() {
-        const participants = document.getElementById('bill-participants').value.trim();
-        const totalAmount = parseFloat(document.getElementById('bill-amount').value) || 0;
+        const billParticipantsEl = document.getElementById('bill-participants');
+        const billAmountEl = document.getElementById('bill-amount');
+        const unequalSplitContainerEl = document.getElementById('unequal-split-container');
+        const participantAmountsEl = document.getElementById('participant-amounts');
+        
+        if (!billParticipantsEl || !billAmountEl || !unequalSplitContainerEl || !participantAmountsEl) {
+            return;
+        }
+        
+        const participants = billParticipantsEl.value.trim();
+        const totalAmount = parseFloat(billAmountEl.value) || 0;
         
         if (!currentUser) return;
         
@@ -1506,12 +1939,11 @@ if (logoutBtnSidebar) {
         const allParticipants = [currentUser.name, ...friends];
         
         if (allParticipants.length === 0) {
-            document.getElementById('unequal-split-container').style.display = 'none';
+            unequalSplitContainerEl.style.display = 'none';
             return;
         }
         
-        const container = document.getElementById('participant-amounts');
-        container.innerHTML = '';
+        participantAmountsEl.innerHTML = '';
         
         allParticipants.forEach(participant => {
             const div = document.createElement('div');
@@ -1520,13 +1952,13 @@ if (logoutBtnSidebar) {
                 <label>${participant}${participant === currentUser.name ? ' (You)' : ''}</label>
                 <input type="number" class="participant-amount-input" data-participant="${participant}" min="0" step="0.01" placeholder="Enter amount" required>
             `;
-            container.appendChild(div);
+            participantAmountsEl.appendChild(div);
         });
         
-        document.getElementById('unequal-split-container').style.display = 'block';
+        unequalSplitContainerEl.style.display = 'block';
         
         // Add validation on input change
-        const inputs = container.querySelectorAll('.participant-amount-input');
+        const inputs = participantAmountsEl.querySelectorAll('.participant-amount-input');
         inputs.forEach(input => {
             input.addEventListener('input', validateUnequalSplit);
         });
@@ -1534,7 +1966,14 @@ if (logoutBtnSidebar) {
     
     // Validate unequal split
     function validateUnequalSplit() {
-        const totalAmount = parseFloat(document.getElementById('bill-amount').value) || 0;
+        const billAmountEl = document.getElementById('bill-amount');
+        const validationMsg = document.getElementById('split-validation-message');
+        
+        if (!billAmountEl || !validationMsg) {
+            return;
+        }
+        
+        const totalAmount = parseFloat(billAmountEl.value) || 0;
         const inputs = document.querySelectorAll('.participant-amount-input');
         let totalSplit = 0;
         
@@ -1542,7 +1981,6 @@ if (logoutBtnSidebar) {
             totalSplit += parseFloat(input.value) || 0;
         });
         
-        const validationMsg = document.getElementById('split-validation-message');
         const diff = Math.abs(totalSplit - totalAmount);
         
         if (diff > 0.01) {
@@ -1554,7 +1992,7 @@ if (logoutBtnSidebar) {
     }
     
     // Handle bill form submission
-    function handleBillSubmit(e) {
+    async function handleBillSubmit(e) {
         e.preventDefault();
         
         if (!currentUser) {
@@ -1562,10 +2000,21 @@ if (logoutBtnSidebar) {
             return;
         }
         
-        const name = document.getElementById('bill-name').value;
-        const totalAmount = parseFloat(document.getElementById('bill-amount').value);
-        const splitType = document.getElementById('bill-split-type').value;
-        const participantsStr = document.getElementById('bill-participants').value.trim();
+        const billNameEl = document.getElementById('bill-name');
+        const billAmountEl = document.getElementById('bill-amount');
+        const billSplitTypeEl = document.getElementById('bill-split-type');
+        const billParticipantsEl = document.getElementById('bill-participants');
+        const splitValidationMessageEl = document.getElementById('split-validation-message');
+        
+        if (!billNameEl || !billAmountEl || !billSplitTypeEl || !billParticipantsEl) {
+            showToast('Error: Form elements not found', 'error');
+            return;
+        }
+        
+        const billName = billNameEl.value;
+        const totalAmount = parseFloat(billAmountEl.value);
+        const splitType = billSplitTypeEl.value;
+        const participantsStr = billParticipantsEl.value.trim();
         
         const friends = participantsStr.split(',').map(p => p.trim()).filter(p => p);
         
@@ -1576,12 +2025,12 @@ if (logoutBtnSidebar) {
         
         // Include user in participants
         const allParticipants = [currentUser.name, ...friends];
-        let splitDetails = {};
+        let splitData = {};
         
         if (splitType === 'equal') {
             const amountPerPerson = totalAmount / allParticipants.length;
             allParticipants.forEach(p => {
-                splitDetails[p] = amountPerPerson;
+                splitData[p] = amountPerPerson;
             });
         } else {
             // Unequal split
@@ -1591,12 +2040,12 @@ if (logoutBtnSidebar) {
             inputs.forEach(input => {
                 const amount = parseFloat(input.value) || 0;
                 const participant = input.getAttribute('data-participant');
-                splitDetails[participant] = amount;
+                splitData[participant] = amount;
                 totalSplit += amount;
             });
             
             if (Math.abs(totalSplit - totalAmount) > 0.01) {
-                document.getElementById('split-validation-message').style.display = 'block';
+                if (splitValidationMessageEl) splitValidationMessageEl.style.display = 'block';
                 return;
             }
         }
@@ -1607,26 +2056,36 @@ if (logoutBtnSidebar) {
             paymentStatus[p] = p === currentUser.name ? 'paid' : 'unpaid';
         });
         
-        const newBill = {
-            id: Date.now(),
-            name,
+        const billData = {
+            billName,
             totalAmount,
             splitType,
             participants: allParticipants,
-            splitDetails,
+            splitData,
             paymentStatus,
-            paidBy: currentUser.name, // Default: current user paid
-            settled: false,
-            createdAt: new Date()
+            paidBy: currentUser.name,
+            settled: false
         };
         
-        state.splitBills.push(newBill);
-        saveData();
-        
-        closeModal();
-        renderBills();
-        billForm.reset();
-        showToast('Bill added successfully!', 'success');
+        try {
+            const savedBill = await createSplitBill(billData);
+            
+            // Add to local state
+            state.splitBills.push({
+                ...savedBill,
+                id: savedBill._id || savedBill.id,
+                splitDetails: savedBill.splitData || savedBill.splitDetails,
+                paymentStatus: savedBill.paymentStatus || {}
+            });
+            
+            closeModal();
+            renderBills();
+            if (billForm) billForm.reset();
+            showToast('Bill added successfully!', 'success');
+        } catch (error) {
+            console.error('Error adding bill:', error);
+            showToast('Failed to add bill', 'error');
+        }
     }
     
     // Get avatar for a participant (assigns avatars based on name hash)
@@ -1664,86 +2123,86 @@ if (logoutBtnSidebar) {
         state.splitBills.forEach(bill => {
             const billEl = document.createElement('div');
             billEl.className = 'bill-card';
+            billEl.setAttribute('data-id', bill.id);
             
-            // Initialize payment status if not exists
-            if (!bill.paymentStatus) {
-                bill.paymentStatus = {};
-                // If someone paid the full bill, mark them as paid
-                if (bill.paidBy) {
-                    bill.paymentStatus[bill.paidBy] = 'paid';
-                    Object.keys(bill.splitDetails).forEach(p => {
-                        if (p !== bill.paidBy) {
-                            bill.paymentStatus[p] = 'unpaid';
-                        }
-                    });
-                } else {
-                    // Default: all unpaid
-                    Object.keys(bill.splitDetails).forEach(p => {
-                        bill.paymentStatus[p] = 'unpaid';
-                    });
-                }
-            }
+            // Calculate amounts
+            const totalParticipants = bill.participants.length;
+            const yourShare = bill.splitDetails[currentUser?.name] || 0;
             
-            // Build participants list with avatars and payment status
-            let participantsHTML = '';
-            Object.keys(bill.splitDetails).forEach(participant => {
-                const avatar = getParticipantAvatar(participant);
-                const amount = bill.splitDetails[participant];
-                const isPaid = bill.paymentStatus[participant] === 'paid' || bill.settled;
-                const isCurrentUser = currentUser && participant === currentUser.name;
-                
-                participantsHTML += `
-                    <div class="participant-item">
-                        <div class="participant-info">
-                            <div class="participant-avatar">
-                                <img src="${avatar}" alt="${participant}" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-user\\'></i>';">
-                            </div>
-                            <div class="participant-details">
-                                <div class="participant-name">${participant}${isCurrentUser ? ' (You)' : ''}</div>
-                                <div class="participant-amount">${formatCurrency(amount)}</div>
-                            </div>
-                        </div>
-                        <div class="participant-status-section">
-                            <span class="participant-status ${isPaid ? 'paid' : 'unpaid'}">
-                                ${isPaid ? 'Paid' : 'Unpaid'}
-                            </span>
-                            ${!isPaid && !bill.settled && bill.paidBy ? `
-                                <button class="btn-secondary mark-paid-btn" data-bill-id="${bill.id}" data-participant="${participant}" data-payer="${bill.paidBy}">
-                                    Mark as Paid 
-                                </button>
-                            ` : ''}
-                        </div>
-                    </div>
-                `;
-            });
+            // Format date
+            const billDate = bill.createdAt ? new Date(bill.createdAt).toLocaleDateString() : 'N/A';
             
-            // Get currency symbol
-            const currency = window.getSelectedCurrency ? window.getSelectedCurrency() : 'INR';
-            const symbol = window.getCurrencySymbol ? window.getCurrencySymbol(currency) : '₹';
+            // Determine status
+            const isSettled = bill.settled;
+            const statusBadgeClass = isSettled ? 'settled' : 'pending';
+            const statusBadgeText = isSettled ? 'Settled' : 'Pending';
             
             billEl.innerHTML = `
-                <div class="bill-header">
-                    <h3>${bill.name}</h3>
-                    <span class="bill-status ${bill.settled ? 'settled' : 'pending'}">
-                        ${bill.settled ? 'Settled' : 'Pending'}
-                    </span>
+                <div class="bill-card-header">
+                    <h3 class="bill-name">${bill.billName}</h3>
+                    <span class="bill-status-badge ${statusBadgeClass}">${statusBadgeText}</span>
                 </div>
-                <div class="bill-info">
-                    <p><strong>Total Amount:</strong> ${symbol}${bill.totalAmount.toFixed(2)}</p>
-                    <p><strong>Split Type:</strong> ${bill.splitType === 'equal' ? 'Equal' : 'Unequal'}</p>
-                    <p><strong>Created:</strong> ${formatDate(bill.createdAt)}</p>
-                    ${bill.paidBy ? `<p><strong>Paid By:</strong> ${bill.paidBy}</p>` : ''}
+                <div class="bill-info-section">
+                    <div class="bill-info-row">
+                        <span class="bill-info-label">Total Amount:</span>
+                        <span class="bill-info-value">${formatCurrencyAmount(bill.totalAmount)}</span>
+                    </div>
+                    <div class="bill-info-row">
+                        <span class="bill-info-label">Split Type:</span>
+                        <span class="bill-info-value">${bill.splitType}</span>
+                    </div>
+                    <div class="bill-info-row">
+                        <span class="bill-info-label">Created:</span>
+                        <span class="bill-info-value">${billDate}</span>
+                    </div>
+                    <div class="bill-info-row">
+                        <span class="bill-info-label">Paid By:</span>
+                        <span class="bill-info-value">${bill.paidBy || 'Unknown'}</span>
+                    </div>
                 </div>
-                <div class="bill-participants-list scrollable-participants">
-                    <h4>Participants</h4>
-                    ${participantsHTML}
+                <div class="bill-participants-section">
+                    <div class="participants-list scrollable-participants">
+                        ${bill.participants.map(p => {
+                            const amount = bill.splitDetails[p] || 0;
+                            const paid = bill.paymentStatus[p] === 'paid';
+                            const isCurrentUser = currentUser && p === currentUser.name;
+                            const avatar = getParticipantAvatar(p);
+                            return `
+                                <div class="participant-row">
+                                    <div class="participant-left">
+                                        <div class="participant-avatar">
+                                            <img src="${avatar}" alt="${p}" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-user-circle\\'></i>';">
+                                        </div>
+                                        <div class="participant-details">
+                                            <span class="participant-name">${p}${isCurrentUser ? ' (You)' : ''}</span>
+                                            <span class="participant-amount">${formatCurrencyAmount(amount)}</span>
+                                        </div>
+                                    </div>
+                                    <div class="participant-right">
+                                        ${paid ? `
+                                            <span class="participant-status paid">Paid</span>
+                                        ` : `
+                                            <div class="participant-actions">
+                                                <span class="participant-status unpaid">Unpaid</span>
+                                                <button class="mark-paid-btn" data-bill-id="${bill.id}" data-participant="${p}">
+                                                    Mark as Paid
+                                                </button>
+                                            </div>
+                                        `}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
                 </div>
-                <div class="bill-actions">
+                <div class="bill-card-footer">
                     ${!bill.settled ? `
-                        <button class="btn-primary settle-bill-btn" data-id="${bill.id}">
+                        <button class="btn-secondary settle-bill-btn" data-id="${bill.id}">
                             <i class="fas fa-check"></i> Mark as Settled
                         </button>
-                    ` : ''}
+                    ` : `
+                        <span class="settled-badge">Settled</span>
+                    `}
                     <button class="btn-danger delete-bill-btn" data-id="${bill.id}">
                         <i class="fas fa-trash"></i> Delete
                     </button>
@@ -1754,27 +2213,38 @@ if (logoutBtnSidebar) {
         });
         
         // Add event listeners
-        document.querySelectorAll('.settle-bill-btn').forEach(btn => {
+        container.querySelectorAll('.settle-bill-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const id = parseInt(e.currentTarget.getAttribute('data-id'));
-                settleBill(id);
+                e.preventDefault();
+                e.stopPropagation();
+                const id = e.currentTarget.getAttribute('data-id');
+                if (id) {
+                    settleBill(id);
+                }
             });
         });
         
-        document.querySelectorAll('.delete-bill-btn').forEach(btn => {
+        container.querySelectorAll('.delete-bill-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const id = parseInt(e.currentTarget.getAttribute('data-id'));
-                deleteBill(id);
+                e.preventDefault();
+                e.stopPropagation();
+                const id = e.currentTarget.getAttribute('data-id');
+                if (id) {
+                    deleteBill(id);
+                }
             });
         });
         
         // Add event listeners for mark as paid buttons
-        document.querySelectorAll('.mark-paid-btn').forEach(btn => {
+        container.querySelectorAll('.mark-paid-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const billId = parseInt(e.currentTarget.getAttribute('data-bill-id'));
+                e.preventDefault();
+                e.stopPropagation();
+                const billId = e.currentTarget.getAttribute('data-bill-id');
                 const participant = e.currentTarget.getAttribute('data-participant');
-                const payer = e.currentTarget.getAttribute('data-payer');
-                markParticipantAsPaid(billId, participant, payer);
+                if (billId && participant) {
+                    markParticipantAsPaid(billId, participant);
+                }
             });
         });
         
@@ -1783,13 +2253,34 @@ if (logoutBtnSidebar) {
     }
     
     // Mark participant as paid
-    function markParticipantAsPaid(billId, participant, payer) {
-        const bill = state.splitBills.find(b => b.id === billId);
-        if (bill && bill.paymentStatus) {
-            bill.paymentStatus[participant] = 'paid';
-            saveData();
-            renderBills();
-            showToast(`${participant} marked as paid to ${payer}`, 'success');
+    async function markParticipantAsPaid(billId, participant, payer) {
+        try {
+            console.log('Marking participant as paid:', { billId, participant });
+            const result = await markSplitBillAsPaid(billId, participant);
+            console.log('Mark as paid API result:', result);
+            
+            // Update local state
+            const bill = state.splitBills.find(b => b.id === billId || b._id === billId);
+            if (bill && bill.paymentStatus) {
+                bill.paymentStatus[participant] = 'paid';
+                renderBills();
+                showToast(`${participant} marked as paid`, 'success');
+            } else {
+                console.error('Bill not found in local state:', billId);
+                // Reload split bills from API
+                const splitBills = await fetchSplitBills();
+                state.splitBills = splitBills.map(bill => ({
+                    ...bill,
+                    id: bill._id || bill.id,
+                    splitDetails: bill.splitData || bill.splitDetails,
+                    paymentStatus: bill.paymentStatus || {}
+                }));
+                renderBills();
+                showToast(`${participant} marked as paid`, 'success');
+            }
+        } catch (error) {
+            console.error('Error marking as paid:', error);
+            showToast('Failed to mark as paid', 'error');
         }
     }
     
@@ -1855,21 +2346,54 @@ if (logoutBtnSidebar) {
     }
     
     // Settle bill
-    function settleBill(id) {
-        const bill = state.splitBills.find(b => b.id === id);
-        if (bill) {
-            bill.settled = true;
-            saveData();
-            renderBills();
+    async function settleBill(id) {
+        try {
+            console.log('Settling bill:', id);
+            const result = await settleSplitBill(id);
+            console.log('Settle bill API result:', result);
+            
+            // Update local state with API response
+            const bill = state.splitBills.find(b => b.id === id || b._id === id);
+            if (bill) {
+                // Update with API response data
+                bill.settled = result.settled;
+                bill.paymentStatus = result.paymentStatus || bill.paymentStatus;
+                console.log('Updated bill state:', { settled: bill.settled, paymentStatus: bill.paymentStatus });
+                renderBills();
+                showToast('Bill settled successfully!', 'success');
+            } else {
+                console.error('Bill not found in local state:', id);
+                // Reload split bills from API
+                const splitBills = await fetchSplitBills();
+                state.splitBills = splitBills.map(bill => ({
+                    ...bill,
+                    id: bill._id || bill.id,
+                    splitDetails: bill.splitData || bill.splitDetails,
+                    paymentStatus: bill.paymentStatus || {}
+                }));
+                renderBills();
+                showToast('Bill settled successfully!', 'success');
+            }
+        } catch (error) {
+            console.error('Error settling bill:', error);
+            showToast('Failed to settle bill', 'error');
         }
     }
     
     // Delete bill
-    function deleteBill(id) {
+    async function deleteBill(id) {
         if (confirm('Are you sure you want to delete this bill?')) {
-            state.splitBills = state.splitBills.filter(b => b.id !== id);
-            saveData();
-            renderBills();
+            try {
+                await deleteSplitBill(id);
+                
+                // Remove from local state
+                state.splitBills = state.splitBills.filter(b => b.id !== id);
+                renderBills();
+                showToast('Bill deleted successfully!', 'success');
+            } catch (error) {
+                console.error('Error deleting bill:', error);
+                showToast('Failed to delete bill', 'error');
+            }
         }
     }
     
@@ -1992,7 +2516,7 @@ if (logoutBtnSidebar) {
                     }
                     
                     doc.text(formatDate(trans.date), 14, yPos);
-                    doc.text(trans.description.substring(0, 20), 50, yPos);
+                    doc.text((trans.title || trans.description).substring(0, 20), 50, yPos);
                     doc.text(trans.type, 120, yPos);
                     doc.text(`${trans.type === 'income' ? '+' : '-'}₹${trans.amount.toFixed(2)}`, 150, yPos);
                     yPos += 7;
