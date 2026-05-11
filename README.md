@@ -87,6 +87,10 @@ CashLog/
 ├── style.css
 ├── script.js
 ├── account.js
+├── account.css
+├── login.html
+├── login.css
+├── login.js
 ├── README.md
 ```
 
@@ -175,12 +179,11 @@ OR use Live Server extension in VS Code/Windsurf.
 
 # 📸 Screenshots
 
-Add screenshots of:
-
-* Dashboard
-* Transactions
-* Split Bills
-* Account Section
+<img width="1879" height="971" alt="image" src="https://github.com/user-attachments/assets/bb8781fa-6535-403d-8db8-2d613da1da2a" />
+<img width="1886" height="973" alt="image" src="https://github.com/user-attachments/assets/b168ac7d-bacd-44e8-8171-aae83971d05f" />
+<img width="1892" height="971" alt="image" src="https://github.com/user-attachments/assets/a34a2f23-197d-4283-a17d-4ff42744763f" />
+<img width="1889" height="971" alt="image" src="https://github.com/user-attachments/assets/52963ae0-2ee6-4e14-a4e4-a7727f84bb2e" />
+<img width="1892" height="976" alt="image" src="https://github.com/user-attachments/assets/6e951a25-dbb7-49a5-a588-bb696a0734ab" />
 
 ---
 
