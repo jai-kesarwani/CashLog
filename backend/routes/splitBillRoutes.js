@@ -9,6 +9,10 @@ const {
   markAsPaid,
   settleSplitBill
 } = require('../controllers/splitBillController');
+const authMiddleware = require('../middleware/authMiddleware');
+
+// All split bill routes require authentication
+router.use(authMiddleware);
 
 // POST /split-bills - Create a new split bill
 router.post('/', createSplitBill);

@@ -3,17 +3,17 @@ const SplitBill = require('../models/SplitBill');
 // Create a new split bill
 exports.createSplitBill = async (req, res) => {
   try {
-    const { userId, billName, totalAmount, participants, splitType, splitData, paymentStatus, paidBy } = req.body;
+    const { billName, totalAmount, participants, splitType, splitData, paymentStatus, paidBy } = req.body;
 
     if (!billName || !totalAmount || !participants || !splitType) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Please provide all required fields' 
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide all required fields'
       });
     }
 
     const splitBill = new SplitBill({
-      userId: userId || null,
+      userId: req.user.userId,
       billName,
       totalAmount,
       participants,
@@ -44,10 +44,7 @@ exports.createSplitBill = async (req, res) => {
 // Get all split bills
 exports.getSplitBills = async (req, res) => {
   try {
-    const { userId } = req.query;
-    
-    const query = userId ? { userId } : {};
-    const splitBills = await SplitBill.find(query).sort({ createdAt: -1 });
+    const splitBills = await SplitBill.find({ userId: req.user.userId }).sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
@@ -72,6 +69,14 @@ exports.getSplitBillById = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Split bill not found'
+      });
+    }
+
+    // Verify ownership
+    if (splitBill.userId.toString() !== req.user.userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to access this split bill'
       });
     }
 
@@ -100,6 +105,14 @@ exports.updateSplitBill = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Split bill not found'
+      });
+    }
+
+    // Verify ownership
+    if (splitBill.userId.toString() !== req.user.userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update this split bill'
       });
     }
 
@@ -146,6 +159,14 @@ exports.deleteSplitBill = async (req, res) => {
       });
     }
 
+    // Verify ownership
+    if (splitBill.userId.toString() !== req.user.userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to delete this split bill'
+      });
+    }
+
     await SplitBill.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
@@ -172,6 +193,14 @@ exports.markAsPaid = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Split bill not found'
+      });
+    }
+
+    // Verify ownership
+    if (splitBill.userId.toString() !== req.user.userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to modify this split bill'
       });
     }
 
@@ -215,6 +244,14 @@ exports.settleSplitBill = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Split bill not found'
+      });
+    }
+
+    // Verify ownership
+    if (splitBill.userId.toString() !== req.user.userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to modify this split bill'
       });
     }
 

@@ -45,17 +45,32 @@ document.addEventListener('DOMContentLoaded', function() {
     async function apiCall(endpoint, options = {}) {
         try {
             const url = `${API_BASE_URL}${endpoint}`;
+            
+            // Get JWT token from localStorage
+            const token = localStorage.getItem('token');
+            
+            const headers = {
+                'Content-Type': 'application/json',
+                ...options.headers
+            };
+            
+            // Add Authorization header if token exists
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+                console.log('API call - Adding Authorization header for:', endpoint);
+            } else {
+                console.log('API call - No token found for:', endpoint);
+            }
+            
             const response = await fetch(url, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...options.headers
-                },
+                headers: headers,
                 ...options
             });
 
             const data = await response.json();
 
             if (!response.ok) {
+                console.error('API Error Response:', data);
                 throw new Error(data.message || 'API request failed');
             }
 

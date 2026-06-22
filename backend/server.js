@@ -1,27 +1,24 @@
 require("dotenv").config();
 
 const express = require("express");
-const mongoose = require("mongoose");
 const cors = require("cors");
+const connectDB = require("./config/db");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect(process.env.MONGO_URI)
-.then(() => {
-    console.log("MongoDB Connected");
-})
-.catch((err) => {
-    console.log(err);
-});
+// Connect to MongoDB
+connectDB();
 
 // Import routes
 const transactionRoutes = require('./routes/transactionRoutes');
 const splitBillRoutes = require('./routes/splitBillRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 // Use routes
+app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/split-bills', splitBillRoutes);
 

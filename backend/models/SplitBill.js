@@ -2,8 +2,9 @@ const mongoose = require('mongoose');
 
 const splitBillSchema = new mongoose.Schema({
   userId: {
-    type: String,
-    default: null
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   },
   billName: {
     type: String,

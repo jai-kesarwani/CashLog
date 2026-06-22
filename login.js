@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Sign up handler
     if (signupForm) {
-        signupForm.addEventListener('submit', (e) => {
+        signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             clearErrorMessages();
             
@@ -59,36 +59,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // Get existing users
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            
-            // Check if user already exists
-            if (users.find(u => u.email === email)) {
-                showError('User with this email already exists!');
-                return;
+            // Call backend API to register
+            try {
+                const response = await fetch('http://localhost:5000/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name,
+                        email,
+                        password
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    showError(data.message || 'Registration failed');
+                    return;
+                }
+                
+                // Store token and user info
+                localStorage.setItem('token', data.data.token);
+                localStorage.setItem('loggedInUser', JSON.stringify(data.data.user));
+                localStorage.setItem('isLoggedIn', 'true');
+                
+                // Redirect to home page
+                window.location.href = 'index.html';
+            } catch (error) {
+                console.error('Registration error:', error);
+                showError('Connection error. Please try again.');
             }
-            
-            // Create new user
-            const newUser = {
-                id: Date.now(),
-                name,
-                email,
-                password // In production, hash this password
-            };
-            
-            users.push(newUser);
-            localStorage.setItem('users', JSON.stringify(users));
-            localStorage.setItem('loggedInUser', JSON.stringify(newUser));
-            localStorage.setItem('isLoggedIn', 'true');
-            
-            // Redirect to home page
-            window.location.href = 'index.html';
         });
     }
     
     // Sign in handler
     if (signinForm) {
-        signinForm.addEventListener('submit', (e) => {
+        signinForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             clearErrorMessages();
             
@@ -101,17 +109,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            const user = users.find(u => u.email === email && u.password === password);
-            
-            if (user) {
-                localStorage.setItem('loggedInUser', JSON.stringify(user));
+            // Call backend API to login
+            try {
+                const response = await fetch('http://localhost:5000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email,
+                        password
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    showError(data.message || 'Login failed');
+                    return;
+                }
+                
+                // Store token and user info
+                localStorage.setItem('token', data.data.token);
+                localStorage.setItem('loggedInUser', JSON.stringify(data.data.user));
                 localStorage.setItem('isLoggedIn', 'true');
                 
                 // Redirect to home page
                 window.location.href = 'index.html';
-            } else {
-                showError('Invalid email or password!');
+            } catch (error) {
+                console.error('Login error:', error);
+                showError('Connection error. Please try again.');
             }
         });
     }

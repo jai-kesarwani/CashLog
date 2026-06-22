@@ -3,17 +3,17 @@ const Transaction = require('../models/Transaction');
 // Create a new transaction
 exports.createTransaction = async (req, res) => {
   try {
-    const { userId, title, amount, category, type, date, categoryId, icon } = req.body;
+    const { title, amount, category, type, date, categoryId, icon } = req.body;
 
     if (!title || !amount || !category || !type || !date) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Please provide all required fields' 
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide all required fields'
       });
     }
 
     const transaction = new Transaction({
-      userId: userId || null,
+      userId: req.user.userId,
       title,
       amount,
       category,
@@ -43,10 +43,7 @@ exports.createTransaction = async (req, res) => {
 // Get all transactions
 exports.getTransactions = async (req, res) => {
   try {
-    const { userId } = req.query;
-    
-    const query = userId ? { userId } : {};
-    const transactions = await Transaction.find(query).sort({ date: -1 });
+    const transactions = await Transaction.find({ userId: req.user.userId }).sort({ date: -1 });
 
     res.status(200).json({
       success: true,
@@ -74,6 +71,14 @@ exports.getTransactionById = async (req, res) => {
       });
     }
 
+    // Verify ownership
+    if (transaction.userId.toString() !== req.user.userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to access this transaction'
+      });
+    }
+
     res.status(200).json({
       success: true,
       data: transaction
@@ -91,7 +96,7 @@ exports.getTransactionById = async (req, res) => {
 // Update a transaction
 exports.updateTransaction = async (req, res) => {
   try {
-    const { userId, title, amount, category, type, date, categoryId, icon } = req.body;
+    const { title, amount, category, type, date, categoryId, icon } = req.body;
 
     const transaction = await Transaction.findById(req.params.id);
 
@@ -102,8 +107,15 @@ exports.updateTransaction = async (req, res) => {
       });
     }
 
+    // Verify ownership
+    if (transaction.userId.toString() !== req.user.userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update this transaction'
+      });
+    }
+
     const updateData = {};
-    if (userId !== undefined) updateData.userId = userId;
     if (title !== undefined) updateData.title = title;
     if (amount !== undefined) updateData.amount = amount;
     if (category !== undefined) updateData.category = category;
@@ -145,6 +157,14 @@ exports.deleteTransaction = async (req, res) => {
       });
     }
 
+    // Verify ownership
+    if (transaction.userId.toString() !== req.user.userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to delete this transaction'
+      });
+    }
+
     await Transaction.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
@@ -164,10 +184,7 @@ exports.deleteTransaction = async (req, res) => {
 // Get financial summary for dashboard
 exports.getFinancialSummary = async (req, res) => {
   try {
-    const { userId } = req.query;
-    const query = userId ? { userId } : {};
-
-    const transactions = await Transaction.find(query);
+    const transactions = await Transaction.find({ userId: req.user.userId });
 
     let totalIncome = 0;
     let totalExpense = 0;

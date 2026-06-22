@@ -8,6 +8,10 @@ const {
   deleteTransaction,
   getFinancialSummary
 } = require('../controllers/transactionController');
+const authMiddleware = require('../middleware/authMiddleware');
+
+// All transaction routes require authentication
+router.use(authMiddleware);
 
 // POST /transactions - Create a new transaction
 router.post('/', createTransaction);
